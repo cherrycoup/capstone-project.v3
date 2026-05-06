@@ -1,25 +1,27 @@
-import { useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useEffect, useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const ProtectedRoutes = ({ children, requireRole }) => {
-    const { user } = useAuth();
+    const { user, loading } = useContext(AuthContext);
     const navigate = useNavigate();
 
     useEffect(() => {
+        if (loading) return;
+
         if (!user) {
             navigate("/login");
             return;
         }
 
         if (requireRole && !requireRole.includes(user.role)) {
-            navigate("/unauthorized");
+            navigate("/login");
         }
 
-    }, [user, navigate, requireRole]);
+    }, [user, navigate, requireRole, loading]);
 
     // while checking
-    if (!user) return null;
+    if (loading || !user) return <div>Loading...</div>;
 
     // block unauthorized
     if (requireRole && !requireRole.includes(user.role)) return null;

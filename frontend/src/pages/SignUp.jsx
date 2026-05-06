@@ -1,0 +1,226 @@
+import React, { useState } from "react";
+import { authAPI } from "../utils/api.js";
+import { useNavigate, Link } from "react-router-dom";
+
+export default function SignUp() {
+    const [formData, setFormData] = useState({
+        name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        address: ""
+    });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const navigate = useNavigate();
+
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+
+        // Validation
+        if (!formData.name || !formData.email || !formData.password || !formData.address) {
+            setError("All fields are required");
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match");
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            setError("Password must be at least 6 characters long");
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await authAPI.registerCustomer(
+                formData.name,
+                formData.email,
+                formData.password,
+                formData.address
+            );
+
+            if (response.data.success) {
+                alert("Account created successfully! Please login.");
+                navigate("/login");
+            }
+        } catch (err) {
+            setError(err.response?.data?.message || "Registration failed");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+            <div className="w-full max-w-md lg:max-w-lg bg-white rounded-2xl border border-gray-300 p-8 shadow-sm">
+                <h1 style={styles.title}>Create Account</h1>
+                <p style={styles.subtitle}>Join us as a customer</p>
+
+                {error && <div style={styles.error}>{error}</div>}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium">Full Name</label>
+                        <input
+                            type="text"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                            placeholder="Enter your full name"
+                            className=" w-full px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium">Email:</label>
+                        <input
+                            type="email"
+                            name="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                            placeholder="Enter your email"
+                            className=" w-full px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium">Address:</label>
+                        <input
+                            type="text"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                            placeholder="Enter your address"
+                            className="w-full px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium">Password:</label>
+                        <input
+                            type="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                            placeholder="Create a password"
+                            className="mt- w-full px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium">Confirm Password:</label>
+                        <input
+                            type="password"
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                            placeholder="Confirm your password"
+                            className="mt- w-full px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full mt-2 cursor-pointer py-2.5 rounded-lg bg-black text-white font-medium hover:opacity-90 transition"
+                    >
+                        {loading ? "Creating Account..." : "Create Account"}
+                    </button>
+                </form>
+
+                <div style={styles.loginSection}>
+                    <p>
+                        Already have an account?{" "}
+                        <Link to="/login" style={styles.loginLink}>
+                            Login here
+                        </Link>
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const styles = {
+    container: {
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        backgroundColor: "#f5f5f5",
+        padding: "20px"
+    },
+    card: {
+        backgroundColor: "white",
+        padding: "40px",
+        borderRadius: "8px",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+        width: "100%",
+        maxWidth: "450px"
+    },
+    title: {
+        textAlign: "center",
+        marginBottom: "10px",
+        color: "#333",
+        fontSize: "28px"
+    },
+    subtitle: {
+        textAlign: "center",
+        marginBottom: "30px",
+        color: "#666",
+        fontSize: "16px"
+    },
+    error: {
+        backgroundColor: "#fee",
+        color: "#c33",
+        padding: "10px",
+        borderRadius: "4px",
+        marginBottom: "20px",
+        textAlign: "center"
+    },
+    formGroup: {
+        marginBottom: "15px"
+    },
+    button: {
+        width: "100%",
+        padding: "12px",
+        backgroundColor: "#28a745",
+        color: "white",
+        border: "none",
+        borderRadius: "4px",
+        cursor: "pointer",
+        fontSize: "16px",
+        marginTop: "10px"
+    },
+    loginSection: {
+        textAlign: "center",
+        marginTop: "20px",
+        fontSize: "14px"
+    },
+    loginLink: {
+        color: "#007bff",
+        textDecoration: "none"
+    }
+};

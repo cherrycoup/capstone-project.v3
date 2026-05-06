@@ -1,0 +1,73 @@
+import mongoose from "mongoose";
+
+const orderSchema = new mongoose.Schema({
+    customerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Customer",
+        default: null
+    },
+    fullName: {
+        type: String,
+        required: true
+    },
+    contactNumber: {
+        type: String,
+        required: true
+    },
+    address: {
+        type: String,
+        required: true
+    },
+    packageDealId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "PackageDeal",
+        default: null
+    },
+    packageName: {
+        type: String,
+        trim: true
+    },
+    paymentMethod: {
+        type: String,
+        enum: ["Credit Card", "Debit Card", "Cash", "Cash on Delivery", "Online Transfer", "GCash", "Maya", "Bank Transfer"],
+        required: true
+    },
+    referenceNumber: {
+        type: String,
+        unique: true,
+        trim: true
+    },
+    total: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    discountAmount: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    notes: {
+        type: String,
+        trim: true
+    },
+    status: {
+        type: String,
+        enum: ["Pending", "Confirmed", "Completed", "Cancelled"],
+        default: "Pending"
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+orderSchema.index({ customerId: 1, createdAt: -1 });
+orderSchema.index({ referenceNumber: 1 }, { unique: true });
+
+const Order = mongoose.model("Order", orderSchema);
+export default Order;

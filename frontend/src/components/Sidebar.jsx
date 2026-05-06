@@ -1,23 +1,37 @@
 import { useState } from 'react';
-import { BsBuildingDash } from "react-icons/bs";
-import { IoClose } from "react-icons/io5";
-import { GoHome } from "react-icons/go";
-import { PiShoppingCartSimpleBold } from "react-icons/pi";
-import { FaRegCalendar, FaBoxOpen } from "react-icons/fa";
-import { BsCurrencyBitcoin } from "react-icons/bs";
-import { IoAnalyticsOutline } from "react-icons/io5";
-import { NavLink } from 'react-router-dom';
+import {
+  Building2,
+  Calendar,
+  ChartNoAxesCombined,
+  Home,
+  LogOut,
+  Package,
+  PackagePlus,
+  Settings,
+  ShoppingCart,
+  X,
+} from "lucide-react";
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const menuItems = [
-    { name: "Dashboard", path: "/admin/dashboard", icon: <GoHome />, isParent: true },
-    { name: "Orders", path: "/admin/dashboard/orders", icon: <PiShoppingCartSimpleBold />, isParent: false },
-    { name: "Appointments", path: "/admin/dashboard/appointments", icon: <FaRegCalendar />, isParent: false },
-    { name: "Inventory", path: "/admin/dashboard/inventory", icon: <FaBoxOpen />, isParent: false },
-    { name: "Commissions", path: "/admin/dashboard/commissions", icon: <BsCurrencyBitcoin />, isParent: false },
-    { name: "Reports", path: "/admin/dashboard/reports", icon: <IoAnalyticsOutline />, isParent: false },
+    { name: "Dashboard", path: "/admin/dashboard", icon: <Home />, isParent: true },
+    { name: "Orders", path: "/admin/orders", icon: <ShoppingCart />, isParent: false },
+    { name: "Appointments", path: "/admin/appointments", icon: <Calendar />, isParent: false },
+    { name: "Inventory", path: "/admin/inventory", icon: <Package />, isParent: false },
+    { name: "Package Deals", path: "/admin/packages", icon: <PackagePlus />, isParent: false },
+    { name: "Reports", path: "/admin/reports", icon: <ChartNoAxesCombined />, isParent: false },
+    { name: "Settings", path: "/admin/settings", icon: <Settings />, isParent: false },
   ];
 
   return (
@@ -41,11 +55,11 @@ const Sidebar = () => {
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-800">
             <div className="flex items-center gap-3">
-              <BsBuildingDash className="w-8 h-8 text-blue-400" />
+              <Building2 className="w-8 h-8 text-blue-400" />
               <div>
                 <h1 className="font-bold text-lg">JBM ELECTRO</h1>
                 <p className="text-xs text-gray-400">VENTURES</p>
-              </div>
+              </div>  
             </div>
 
             {/* ❌ Close button (mobile only) */}
@@ -53,7 +67,7 @@ const Sidebar = () => {
               onClick={() => setIsOpen(false)}
               className="lg:hidden"
             >
-              <IoClose size={24} />
+              <X size={24} />
             </button>
           </div>
 
@@ -83,13 +97,24 @@ const Sidebar = () => {
           <div className="p-4 border-t border-gray-800">
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                <span className="text-sm">A</span>
+                {user?.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt="" className="h-full w-full object-cover rounded-full" />
+                ) : (
+                  <span className="text-sm">{user?.name?.[0]?.toUpperCase() || "A"}</span>
+                )}
               </div>
               <div className="flex-1">
-                <p className="text-sm">Admin User</p>
-                <p className="text-xs text-gray-400">admin@jbm.com</p>
+              <p className="text-sm">{user?.name || "Admin User"}</p>
+              <p className="text-xs text-gray-400">{user?.email || "admin@jbm.com"}</p>
               </div>
             </div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-red-600 hover:text-white transition-colors"
+            >
+              <LogOut className="h-5 w-5" />
+              <span>Logout</span>
+            </button>
           </div>
 
         </div>

@@ -1,0 +1,30 @@
+import express from "express";
+import { verifyStaff, verifyToken } from "../middleware/auth.js";
+import {
+    getAllCustomers,
+    getCustomerById,
+    getCustomerByEmail,
+    getCurrentCustomer,
+    updateCurrentCustomer,
+    createCustomer,
+    updateCustomer,
+    deleteCustomer,
+    getCustomerStats
+} from "../controllers/customerController.js";
+
+const router = express.Router();
+
+// Authenticated customer route
+router.get("/me", verifyToken, getCurrentCustomer);
+router.put("/me", verifyToken, updateCurrentCustomer);
+
+// Staff/Admin routes
+router.post("/", verifyToken, verifyStaff, createCustomer);
+router.get("/email/:email", verifyToken, verifyStaff, getCustomerByEmail);
+router.get("/", verifyToken, verifyStaff, getAllCustomers);
+router.get("/stats", verifyToken, verifyStaff, getCustomerStats);
+router.get("/:id", verifyToken, verifyStaff, getCustomerById);
+router.put("/:id", verifyToken, verifyStaff, updateCustomer);
+router.delete("/:id", verifyToken, verifyStaff, deleteCustomer);
+
+export default router;

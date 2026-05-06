@@ -1,101 +1,184 @@
-import { useState } from "react";
-import { MdLockOutline } from "react-icons/md";
-import { useAuth } from "../context/AuthContext";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useContext } from "react";
+import { AuthContext } from "../context/AuthContext.jsx";
+import { authAPI } from "../utils/api.js";
+import { useNavigate, Link } from "react-router-dom";
+import { UserCircle } from 'lucide-react';;
 
-
-const Login = () => {
-
+export default function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState(null);
+    const [isStaffLogin, setIsStaffLogin] = useState(false);
     const [loading, setLoading] = useState(false);
-
-    const { login } = useAuth();
+    const [error, setError] = useState("");
+    const { login } = useContext(AuthContext);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setError("");
         setLoading(true);
-        setError(null);
 
         try {
-            const response = await axios.post("http://localhost:3000/api/auth/login", {
-                email, password});
-            if (response.data.success) {
-                await login(response.data.user, response.data.token)
-                if(response.data.user.role === "admin") {
-                    window.location.href = "/admin/dashboard";
-                } else {
-                    navigate("/customer/dashboard");
-                }
-            }else {
-                alert(response.data.message);
+            let response;
+            if (isStaffLogin) {
+                response = await authAPI.loginStaff(email, password);
+            } else {
+                response = await authAPI.loginCustomer(email, password);
             }
-            console.log(response.data);
 
-            const data = await response.json();
-            localStorage.setItem("pos-user", JSON.stringify(data.user));
-            localStorage.setItem("pos-token", data.token);
-            window.location.href = "/admin/dashboard";
-        } catch (error) {
-            if(error.response){
-                setError(error.response.data.message);
+            if (response.data.success) {
+                login(response.data.user, response.data.token);
+                navigate(isStaffLogin ? "/admin" : "/dashboard");
             }
+        } catch (err) {
+            setError(err.response?.data?.message || "Login failed");
         } finally {
             setLoading(false);
         }
-    }
+    };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4" >
-        <div className="w-md bg-white rounded-lg shadow-md p-4">
-           <div className="flex justify-center items-center flex-col gap-y-3">
-                <div className="p-3 bg-gray-300 rounded-full shadow-md">
-                    <MdLockOutline  size={20} />
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+            <div className="w-full max-w-md lg:max-w-lg bg-white rounded-2xl border border-gray-300 p-8 shadow-sm">
+                <div className="flex items-center justify-center mb-4">
+                    <div className="rounded-full bg-blue-100 p-3">
+                    <UserCircle className="h-6 w-6 text-blue-600" />
+                    </div>
                 </div>
-                <p className="text-xl font-semibold">Admin Access</p>
-                <p className="text-gray-500 text-sm">Enter your crendetials to access the admin dashboard</p>
-            </div> 
+                <h1 className="text-xl font-semibold text-center" >
+                    {isStaffLogin ? "Staff Login" : "Welcome Back"}
+                </h1>
+                <p className="text-sm text-gray-500 text-center mt-1 mb-6">
+                    Sign in to your JBM Electro Ventures account
+                </p>
 
-            {error && (
-                <div className="bg-red-100 text-red-700 p-2 rounded-md mt-4">
-                    {error}
+                {error && <div style={styles.error}>{error}</div>}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div style={styles.formGroup}>
+                        <label className="text-sm font-medium">Email</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            disabled={loading}
+                            className="mt-1 w-full px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                            placeholder="you@example.com"
+                        />
+                    </div>
+
+                    <div style={styles.formGroup}>
+                        <label className="text-sm font-medium">Password</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            disabled={loading}
+                            className="mt-1 w-full px-4 py-2 rounded-lg bg-gray-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            placeholder="*******"
+                        />
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-2.5 rounded-lg cursor-pointer bg-black text-white font-medium hover:opacity-90 transition"
+                    >
+                        {loading ? "Logging in..." : "Login"}
+                    </button>
+                </form>
+
+                <div style={styles.toggleSection}>
+                    <p>
+                        {isStaffLogin ? "Are you a customer? " : "Are you staff? "}
+                        <button
+                            type="button"
+                            onClick={() => setIsStaffLogin(!isStaffLogin)}
+                            style={styles.toggleBtn}
+                        >
+                            {isStaffLogin ? "Customer Login" : "Staff Login"}
+                        </button>
+                    </p>
                 </div>
-            )}
-            <form className="mt-6 flex flex-col gap-y-4" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-y-2">
-                <label className="text-sm font-semibold" htmlFor="email">Email</label>
-                <input 
-                type="text" 
-                id="email" 
-                name="email" 
-                placeholder="admin@gmail.com"
-                className="text-[13px] w-full p-2 text-sm rounded-md outline-0 shadow-sm bg-gray-100"
-                required
-                onChange={(e) => setEmail(e.target.value)}
-                />
-            </div>
-            <div className="flex flex-col gap-y-2">
-                <label className="text-sm font-semibold" htmlFor="password">Password</label>
-                <input 
-                type="password" 
-                id="password" 
-                name="password" 
-                required
-                className="text-[13px] w-full p-2 text-sm rounded-md outline-0 shadow-sm bg-gray-100"
-                placeholder="********"
-                onChange={(e) => setPassword(e.target.value)}
-                 />
-            </div>
 
-            <button type="submit" className="w-full text-white p-2 bg-black text-[13px] font-semibold shadow-sm rounded-md cursor-pointer">{loading ? "Signing in..." : "Sign in"} </button>
-        </form> 
-        </div>  
-    </div>
-  )
+                <div style={styles.signupSection}>
+                    <p>
+                        Don't have an account?{" "}
+                        <Link to="/signup" style={styles.signupLink}>
+                            Sign up here
+                        </Link>
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
 }
 
-
-export default Login
+const styles = {
+    container: {
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: "100vh",
+        backgroundColor: "#f5f5f5"
+    },
+    card: {
+        backgroundColor: "white",
+        padding: "40px",
+        borderRadius: "8px",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.1)",
+        width: "100%",
+        maxWidth: "400px"
+    },
+    title: {
+        textAlign: "center",
+        marginBottom: "30px",
+        color: "#333"
+    },
+    error: {
+        backgroundColor: "#fee",
+        color: "#c33",
+        padding: "10px",
+        borderRadius: "4px",
+        marginBottom: "20px",
+        textAlign: "center"
+    },
+    formGroup: {
+        marginBottom: "15px"
+    },
+    button: {
+        width: "100%",
+        padding: "10px",
+        backgroundColor: "#007bff",
+        color: "white",
+        border: "none",
+        borderRadius: "4px",
+        cursor: "pointer",
+        fontSize: "16px",
+        marginTop: "10px"
+    },
+    toggleSection: {
+        textAlign: "center",
+        marginTop: "20px",
+        fontSize: "14px"
+    },
+    toggleBtn: {
+        background: "none",
+        border: "none",
+        color: "#007bff",
+        cursor: "pointer",
+        textDecoration: "underline"
+    },
+    signupSection: {
+        textAlign: "center",
+        marginTop: "15px",
+        fontSize: "14px"
+    },
+    signupLink: {
+        color: "#28a745",
+        textDecoration: "none",
+        fontWeight: "bold"
+    }
+};

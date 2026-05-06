@@ -1,4 +1,4 @@
-import { FaPlus } from "react-icons/fa";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 
 const Inventory = () => {
@@ -19,7 +19,7 @@ const Inventory = () => {
           onClick={() => setDialogOpen(true)}
           className="flex py-2 cursor-pointer bg-black rounded-lg text-white items-center justify-center gap-x-3 px-5 font-semibold text-[12.5px]"
         >
-          <FaPlus />
+          <Plus />
           Add Item
         </div>
       </div>

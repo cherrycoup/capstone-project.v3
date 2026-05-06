@@ -1,6 +1,9 @@
 import User from "./models/User.js"
 import connectDb from "./db/connect.js";
 import bcrypt from "bcrypt";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const register = async () => {
     try{
