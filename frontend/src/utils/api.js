@@ -34,8 +34,8 @@ api.interceptors.response.use(
 export const authAPI = {
     loginCustomer: (email, password) =>
         api.post("/auth/customer/login", { email, password }),
-    registerCustomer: (name, email, phone, password, address) =>
-        api.post("/auth/customer/register", { name, email, phone, password, address }),
+    registerCustomer: (customerData) =>
+        api.post("/auth/customer/register", customerData),
     loginStaff: (email, password) =>
         api.post("/auth/staff/login", { email, password })
 };

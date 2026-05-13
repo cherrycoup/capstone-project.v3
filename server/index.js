@@ -16,17 +16,23 @@ import packageDealsRoutes from "./routes/packageDeals.js"
 dotenv.config()
 
 const app = express()
-const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173")
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:5173,http://127.0.0.1:5173")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean)
+const isDevelopment = process.env.NODE_ENV !== "production"
+const isAllowedLocalDevOrigin = (origin) => /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin)
 
 app.set("trust proxy", 1)
 app.disable("x-powered-by")
 app.use(securityHeaders)
 app.use(cors({
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (
+            !origin ||
+            allowedOrigins.includes(origin) ||
+            (isDevelopment && isAllowedLocalDevOrigin(origin))
+        ) {
             return callback(null, true)
         }
 
@@ -77,4 +83,6 @@ const startServer = async () => {
     })
 }
 
-startServer()
+startServer().catch(() => {
+    process.exit(1)
+})

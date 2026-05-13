@@ -1,4 +1,5 @@
 import Staff from "../models/Staff.js";
+import User from "../models/User.js";
 import bcrypt from "bcrypt";
 import { cleanProfileImage, cleanString, isStrongPassword, normalizeEmail } from "../utils/validation.js";
 
@@ -82,8 +83,12 @@ export const createStaff = async (req, res) => {
         }
 
         // Check if email already exists
-        const existingStaff = await Staff.findOne({ email });
-        if (existingStaff) {
+        const [existingStaff, existingUser] = await Promise.all([
+            Staff.findOne({ email }),
+            User.findOne({ email }),
+        ]);
+
+        if (existingStaff || existingUser) {
             return res.status(400).json({
                 success: false,
                 message: "Email already in use"

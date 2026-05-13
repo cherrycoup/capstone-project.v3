@@ -9,6 +9,7 @@ import {
   PackagePlus,
   Settings,
   ShoppingCart,
+  UsersRound,
   X,
 } from "lucide-react";
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -30,6 +31,7 @@ const Sidebar = () => {
     { name: "Appointments", path: "/admin/appointments", icon: <Calendar />, isParent: false },
     { name: "Inventory", path: "/admin/inventory", icon: <Package />, isParent: false },
     { name: "Package Deals", path: "/admin/packages", icon: <PackagePlus />, isParent: false },
+    { name: "Staff", path: "/admin/staff", icon: <UsersRound />, isParent: false },
     { name: "Reports", path: "/admin/reports", icon: <ChartNoAxesCombined />, isParent: false },
     { name: "Settings", path: "/admin/settings", icon: <Settings />, isParent: false },
   ];

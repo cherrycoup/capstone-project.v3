@@ -80,6 +80,7 @@ export default function Orders() {
       order.fullName,
       order.customerId?.name,
       order.customerId?.contactInfo?.email,
+      order.email,
     ]
       .filter(Boolean)
       .join(" ")
@@ -158,7 +159,7 @@ export default function Orders() {
                       <div>
                         <p>{order.customerId?.name || order.fullName || "Guest"}</p>
                         <p className="text-xs text-gray-500 hidden sm:block">
-                          {order.customerId?.contactInfo?.email || order.contactNumber}
+                          {order.customerId?.contactInfo?.email || order.email || order.contactNumber}
                         </p>
                       </div>
                     </td>
@@ -209,6 +210,10 @@ export default function Orders() {
                 <div>
                   <p className="text-sm text-gray-500">Phone</p>
                   <p>{detailOrder.contactNumber}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p>{detailOrder.customerId?.contactInfo?.email || detailOrder.email || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Date</p>

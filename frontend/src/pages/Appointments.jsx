@@ -63,9 +63,9 @@ export default function Appointments() {
     }
   };
 
-  const getCustomerName = (appointment) => appointment.customerId?.name || "Unknown Customer";
-  const getCustomerEmail = (appointment) => appointment.customerId?.contactInfo?.email || "N/A";
-  const getPhone = (appointment) => appointment.customerId?.contactInfo?.phone || "N/A";
+  const getCustomerName = (appointment) => appointment.contactInfo?.name || appointment.customerId?.name || "Unknown Customer";
+  const getCustomerEmail = (appointment) => appointment.contactInfo?.email || appointment.customerId?.contactInfo?.email || "N/A";
+  const getPhone = (appointment) => appointment.contactInfo?.phone || appointment.customerId?.contactInfo?.phone || "N/A";
   const getLocation = (appointment) => appointment.customerId?.contactInfo?.address || "No address provided";
   const getService = (appointment) => appointment.service || appointment.serviceType || "Electrical Service";
   const getDateValue = (appointment) => appointment.date?.split("T")[0] || "";

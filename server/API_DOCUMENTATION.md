@@ -56,6 +56,7 @@ Request:
 {
   "name": "John Doe",
   "email": "john@example.com",
+  "phone": "555-1234",
   "password": "password123",
   "address": "123 Main St"
 }
@@ -131,6 +132,7 @@ Request:
   "customerId": "customer-id-or-null-for-guest",
   "fullName": "John Doe",
   "contactNumber": "555-1234",
+  "email": "john@example.com",
   "address": "123 Main St",
   "paymentMethod": "Credit Card",
   "referenceNumber": "REF001",

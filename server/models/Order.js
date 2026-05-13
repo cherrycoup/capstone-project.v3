@@ -14,6 +14,12 @@ const orderSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    email: {
+        type: String,
+        trim: true,
+        lowercase: true,
+        default: ""
+    },
     address: {
         type: String,
         required: true
@@ -67,7 +73,6 @@ const orderSchema = new mongoose.Schema({
 });
 
 orderSchema.index({ customerId: 1, createdAt: -1 });
-orderSchema.index({ referenceNumber: 1 }, { unique: true });
 
 const Order = mongoose.model("Order", orderSchema);
 export default Order;

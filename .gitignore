@@ -1,1 +1,7 @@
 node_modules
+*.log
+.env
+.env.*
+!.env.example
+server/.env
+frontend/.env

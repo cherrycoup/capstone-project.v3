@@ -7,6 +7,10 @@ import {
     isValidObjectId,
     normalizeEmail,
 } from "../utils/validation.js";
+import {
+    sendAppointmentCreatedEmail,
+    sendAppointmentStatusEmail,
+} from "../utils/notifications.js";
 
 const ALL_SLOTS = [
     "9:00 AM - 10:00 AM",
@@ -240,6 +244,9 @@ export const createAppointment = async (req, res) => {
         const timeSlot = cleanString(req.body.timeSlot, 60);
         const notes = cleanString(req.body.notes, 1000);
         const range = getDayRange(req.body.date);
+        const submittedContactName = cleanString(contactInfo?.name, 120);
+        const submittedContactEmail = normalizeEmail(contactInfo?.email);
+        const submittedContactPhone = cleanString(contactInfo?.phone, 30);
 
         if (!range || !timeSlot || !service) {
             return res.status(400).json({
@@ -272,6 +279,17 @@ export const createAppointment = async (req, res) => {
             });
         }
 
+        const appointmentContactName = submittedContactName || customer.name;
+        const appointmentContactEmail = submittedContactEmail || customer.contactInfo?.email;
+        const appointmentContactPhone = submittedContactPhone || customer.contactInfo?.phone;
+
+        if (!appointmentContactName || !appointmentContactEmail || !appointmentContactPhone) {
+            return res.status(400).json({
+                success: false,
+                message: "Contact name, email, and phone are required",
+            });
+        }
+
         const existingAppointment = await Appointment.findOne({
             date: { $gte: range.start, $lte: range.end },
             timeSlot,
@@ -292,11 +310,16 @@ export const createAppointment = async (req, res) => {
             timeSlot,
             notes,
             contactInfo: {
-                name: customer.name,
-                email: customer.contactInfo.email,
-                phone: customer.contactInfo.phone,
+                name: appointmentContactName,
+                email: appointmentContactEmail,
+                phone: appointmentContactPhone,
             },
             status: "Scheduled",
+        });
+
+        await sendAppointmentCreatedEmail({
+            ...newAppointment.toObject(),
+            customerId: customer,
         });
 
         return res.status(201).json({
@@ -336,6 +359,16 @@ export const updateAppointment = async (req, res) => {
             });
         }
 
+        const existingAppointment = await Appointment.findById(req.params.id)
+            .populate("customerId", "name contactInfo role");
+
+        if (!existingAppointment) {
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found",
+            });
+        }
+
         const update = {
             notes,
             updatedAt: new Date(),
@@ -345,17 +378,13 @@ export const updateAppointment = async (req, res) => {
         if (timeSlot) update.timeSlot = timeSlot;
         if (status) update.status = status;
 
-        const appointment = await Appointment.findByIdAndUpdate(
-            req.params.id,
-            update,
-            { new: true, runValidators: true }
-        ).populate("customerId", "name contactInfo role");
+        const appointment = await Appointment.findByIdAndUpdate(req.params.id, update, {
+            new: true,
+            runValidators: true,
+        }).populate("customerId", "name contactInfo role");
 
-        if (!appointment) {
-            return res.status(404).json({
-                success: false,
-                message: "Appointment not found",
-            });
+        if (status && existingAppointment.status !== status) {
+            await sendAppointmentStatusEmail(appointment);
         }
 
         res.status(200).json({
@@ -392,6 +421,14 @@ export const updateAppointmentStatus = async (req, res) => {
             });
         }
 
+        const existingAppointment = await Appointment.findById(req.params.id);
+        if (!existingAppointment) {
+            return res.status(404).json({
+                success: false,
+                message: "Appointment not found",
+            });
+        }
+
         const appointment = await Appointment.findByIdAndUpdate(
             req.params.id,
             {
@@ -401,11 +438,8 @@ export const updateAppointmentStatus = async (req, res) => {
             { new: true, runValidators: true }
         ).populate("customerId", "name contactInfo role");
 
-        if (!appointment) {
-            return res.status(404).json({
-                success: false,
-                message: "Appointment not found",
-            });
+        if (existingAppointment.status !== status) {
+            await sendAppointmentStatusEmail(appointment);
         }
 
         res.status(200).json({

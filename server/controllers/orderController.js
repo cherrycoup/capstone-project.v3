@@ -8,8 +8,13 @@ import {
     cleanString,
     isStaffRole,
     isValidObjectId,
+    normalizeEmail,
     parseOrderQuantity,
 } from "../utils/validation.js";
+import {
+    sendOrderCreatedEmail,
+    sendOrderStatusEmail,
+} from "../utils/notifications.js";
 
 const MEMBER_DISCOUNT_RATE = Number(process.env.MEMBER_DISCOUNT_RATE || 0.1);
 
@@ -223,6 +228,7 @@ export const createOrder = async (req, res) => {
     try {
         const fullName = cleanString(req.body.fullName, 120);
         const contactNumber = cleanString(req.body.contactNumber, 30);
+        const email = normalizeEmail(req.body.email);
         const address = cleanString(req.body.address, 500);
         const paymentMethod = cleanString(req.body.paymentMethod, 60);
         const referenceNumber = cleanString(req.body.referenceNumber, 120) || buildReferenceNumber();
@@ -255,7 +261,7 @@ export const createOrder = async (req, res) => {
                 }));
         }
 
-        if (!fullName || !contactNumber || !address || !paymentMethod || items.length === 0) {
+        if (!fullName || !contactNumber || !email || !address || !paymentMethod || items.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: packageDeal
@@ -331,6 +337,7 @@ export const createOrder = async (req, res) => {
             customerId: orderCustomerId,
             fullName,
             contactNumber,
+            email,
             address,
             packageDealId: packageDeal?._id || null,
             packageName: packageDeal?.name || "",
@@ -372,6 +379,11 @@ export const createOrder = async (req, res) => {
 
             createdItems.push(orderItem);
         }
+
+        await sendOrderCreatedEmail({
+            ...newOrder.toObject(),
+            customerId: customer || null,
+        });
 
         res.status(201).json({
             success: true,
@@ -440,6 +452,8 @@ export const updateOrderStatus = async (req, res) => {
             });
         }
 
+        const previousStatus = order.status;
+
         if (status === "Cancelled" && order.status !== "Cancelled") {
             if (order.status === "Completed") {
                 return res.status(400).json({
@@ -457,6 +471,10 @@ export const updateOrderStatus = async (req, res) => {
 
         const populatedOrder = await Order.findById(order._id)
             .populate("customerId", "name contactInfo role");
+
+        if (previousStatus !== status) {
+            await sendOrderStatusEmail(populatedOrder);
+        }
 
         res.status(200).json({
             success: true,
@@ -553,10 +571,15 @@ export const cancelOrder = async (req, res) => {
         order.updatedAt = new Date();
         await order.save();
 
+        const populatedOrder = await Order.findById(order._id)
+            .populate("customerId", "name contactInfo role");
+
+        await sendOrderStatusEmail(populatedOrder);
+
         res.status(200).json({
             success: true,
             message: "Order cancelled successfully",
-            data: order,
+            data: populatedOrder,
         });
     } catch (error) {
         res.status(500).json({

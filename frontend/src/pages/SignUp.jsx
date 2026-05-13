@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import { authAPI } from "../utils/api.js";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 export default function SignUp() {
     const [formData, setFormData] = useState({
         name: "",
         email: "",
+        phone: "",
         password: "",
         confirmPassword: "",
         address: ""
@@ -13,6 +15,7 @@ export default function SignUp() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const navigate = useNavigate();
+    const { login } = useAuth();
 
     const handleChange = (e) => {
         setFormData({
@@ -26,7 +29,7 @@ export default function SignUp() {
         setError("");
 
         // Validation
-        if (!formData.name || !formData.email || !formData.password || !formData.address) {
+        if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.address) {
             setError("All fields are required");
             return;
         }
@@ -36,24 +39,25 @@ export default function SignUp() {
             return;
         }
 
-        if (formData.password.length < 6) {
-            setError("Password must be at least 6 characters long");
+        if (!/[A-Za-z]/.test(formData.password) || !/\d/.test(formData.password) || formData.password.length < 8) {
+            setError("Password must be at least 8 characters and include a letter and a number");
             return;
         }
 
         setLoading(true);
 
         try {
-            const response = await authAPI.registerCustomer(
-                formData.name,
-                formData.email,
-                formData.password,
-                formData.address
-            );
+            const response = await authAPI.registerCustomer({
+                name: formData.name,
+                email: formData.email,
+                phone: formData.phone,
+                address: formData.address,
+                password: formData.password
+            });
 
             if (response.data.success) {
-                alert("Account created successfully! Please login.");
-                navigate("/login");
+                login(response.data.user, response.data.token);
+                navigate("/dashboard");
             }
         } catch (err) {
             setError(err.response?.data?.message || "Registration failed");
@@ -96,6 +100,20 @@ export default function SignUp() {
                             disabled={loading}
                             placeholder="Enter your email"
                             className=" w-full px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="text-sm font-medium">Phone:</label>
+                        <input
+                            type="tel"
+                            name="phone"
+                            value={formData.phone}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                            placeholder="Enter your phone number"
+                            className="w-full px-4 py-2 rounded-lg bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
                         />
                     </div>
 

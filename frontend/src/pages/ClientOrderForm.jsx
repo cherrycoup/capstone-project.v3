@@ -126,6 +126,7 @@ export default function ClientOrderForm({ selectedPackage }) {
         customerId: user?.id,
         fullName: name,
         contactNumber: contact,
+        email,
         address,
         paymentMethod: paymentMethodMap[paymentMethod],
         referenceNumber,

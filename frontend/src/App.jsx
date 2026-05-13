@@ -11,6 +11,7 @@ import Orders from './pages/Orders';
 import Customers from './pages/Customers';
 import Appointments from './pages/Appointments';
 import AdminPackages from './pages/AdminPackages';
+import StaffManagement from './pages/StaffManagement';
 import ClientHomepage from './pages/ClientHomepage';
 import ClientTracking from './pages/ClientTracking';
 import Reports from './pages/Reports';
@@ -42,6 +43,7 @@ const App = () => {
                       <Route path="/packages" element={<AdminPackages />} />
                       <Route path="/orders" element={<Orders />} />
                       <Route path="/customers" element={<Customers />} />
+                      <Route path="/staff" element={<StaffManagement />} />
                       <Route path="/appointments" element={<Appointments />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/settings" element={<Settings />} />

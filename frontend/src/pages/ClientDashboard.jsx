@@ -153,6 +153,12 @@ export default function ClientDashboard() {
     navigate("/");
   };
 
+  const openSettings = () => {
+    setNotificationsOpen(false);
+    setAccountMenuOpen(false);
+    setActiveTab("settings");
+  };
+
   const handleNotificationClick = (notification) => {
     const readIds = getStoredReadNotifications(user.id);
     saveStoredReadNotifications(user.id, [...readIds, notification.id]);
@@ -317,7 +323,7 @@ export default function ClientDashboard() {
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="bg-white border-b px-6 py-4 flex items-center justify-between md:justify-end">
+        <div className="bg-white border-b px-6 py-4 flex items-center justify-between gap-4">
           <Button
             variant="outline"
             size="icon"
@@ -327,71 +333,101 @@ export default function ClientDashboard() {
             <Menu className="h-5 w-5" />
           </Button>
 
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="icon"
-              className="relative"
-              onClick={() => setNotificationsOpen((open) => !open)}
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              type="button"
+              onClick={openSettings}
+              className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-left transition hover:border-blue-200 hover:bg-blue-50 min-w-0"
             >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-600 text-white text-xs">
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
+              <div className="h-10 w-10 rounded-full overflow-hidden bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                {user?.profileImageUrl ? (
+                  <img
+                    src={user.profileImageUrl}
+                    alt={user?.name || "Customer profile"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-sm font-semibold">
+                    {user?.name?.[0]?.toUpperCase() || "C"}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0 hidden sm:block">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {user?.name || "Customer"}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {user?.email || "customer@example.com"}
+                </p>
+              </div>
+            </button>
 
-            {notificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-md border bg-white p-4 shadow-lg z-30">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Notifications</h3>
-                    <div className="flex items-center gap-2">
-                      {unreadCount > 0 && (
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative"
+                onClick={() => setNotificationsOpen((open) => !open)}
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-red-600 text-white text-xs">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </Button>
+
+              {notificationsOpen && (
+                <div className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-md border bg-white p-4 shadow-lg z-30">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold">Notifications</h3>
+                      <div className="flex items-center gap-2">
+                        {unreadCount > 0 && (
+                          <button
+                            onClick={markAllAsRead}
+                            className="text-xs text-blue-600 hover:text-blue-800"
+                          >
+                            Mark all as read
+                          </button>
+                        )}
+                        <Badge variant="secondary">{unreadCount} new</Badge>
+                      </div>
+                    </div>
+                    <div className="h-px bg-gray-200" />
+                    <div className="space-y-3 max-h-96 overflow-auto">
+                      {notifications.map((notification) => (
                         <button
-                          onClick={markAllAsRead}
-                          className="text-xs text-blue-600 hover:text-blue-800"
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          className={`w-full text-left p-3 rounded-lg border transition-colors hover:bg-gray-100 ${
+                            notification.unread
+                              ? "bg-blue-50 border-blue-200"
+                              : "bg-gray-50"
+                          }`}
                         >
-                          Mark all as read
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm">{notification.title}</p>
+                              <p className="text-sm text-gray-600">{notification.message}</p>
+                              <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                            </div>
+                            {notification.unread && (
+                              <div className="h-2 w-2 bg-blue-600 rounded-full mt-1 flex-shrink-0" />
+                            )}
+                          </div>
                         </button>
+                      ))}
+                      {notifications.length === 0 && (
+                        <div className="text-center py-4 text-gray-500">
+                          No notifications
+                        </div>
                       )}
-                      <Badge variant="secondary">{unreadCount} new</Badge>
                     </div>
                   </div>
-                  <div className="h-px bg-gray-200" />
-                  <div className="space-y-3 max-h-96 overflow-auto">
-                    {notifications.map((notification) => (
-                      <button
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        className={`w-full text-left p-3 rounded-lg border transition-colors hover:bg-gray-100 ${
-                          notification.unread
-                            ? "bg-blue-50 border-blue-200"
-                            : "bg-gray-50"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <p className="font-semibold text-sm">{notification.title}</p>
-                            <p className="text-sm text-gray-600">{notification.message}</p>
-                            <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
-                          </div>
-                          {notification.unread && (
-                            <div className="h-2 w-2 bg-blue-600 rounded-full mt-1 flex-shrink-0" />
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                    {notifications.length === 0 && (
-                      <div className="text-center py-4 text-gray-500">
-                        No notifications
-                      </div>
-                    )}
-                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
