@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { DollarSign, Download, ShoppingCart, TrendingUp, Users } from "lucide-react";
+import { AlertTriangle, CalendarCheck, CreditCard, DollarSign, Download, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import { Button } from "../../components/ui/button.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog.jsx";
@@ -32,6 +32,8 @@ const EXPORT_SECTION_OPTIONS = [
   { key: "categories", label: "Sales by category" },
   { key: "products", label: "Top products" },
   { key: "statuses", label: "Order status" },
+  { key: "payments", label: "Payment methods" },
+  { key: "inventoryAlerts", label: "Low stock alerts" },
   { key: "recentOrders", label: "Recent orders" },
 ];
 const EXPORT_RANGE_OPTIONS = [
@@ -140,6 +142,22 @@ const exportReportToExcel = (report, sections) => {
             ["Status", "Orders"],
             (report.charts?.statusBreakdown || []).map((row) => [row.name, row.value])
           ) : ""}
+        ${sections.payments ? buildTable(
+            "Payment Methods",
+            ["Method", "Revenue", "Orders"],
+            (report.charts?.paymentBreakdown || []).map((row) => [row.method, row.revenue, row.orders])
+          ) : ""}
+        ${sections.inventoryAlerts ? buildTable(
+            "Low Stock Alerts",
+            ["Product", "Category", "Stock", "Minimum", "Inventory Value"],
+            (report.inventoryAlerts || []).map((row) => [
+              row.productName,
+              row.category,
+              row.stockLevel,
+              row.minStock,
+              row.inventoryValue,
+            ])
+          ) : ""}
         ${sections.recentOrders ? buildTable(
             "Recent Orders",
             ["Order ID", "Customer", "Date", "Amount", "Status"],
@@ -218,6 +236,9 @@ export default function Reports() {
     : [{ category: "No sales", sales: 0 }];
   const productPerformance = report?.charts?.topProducts || [];
   const statusBreakdown = report?.charts?.statusBreakdown || [];
+  const paymentBreakdown = report?.charts?.paymentBreakdown || [];
+  const appointmentStatusBreakdown = report?.charts?.appointmentStatusBreakdown || [];
+  const inventoryAlerts = report?.inventoryAlerts || [];
   const customerMetrics = [
     { metric: "Total Customers", value: number(allTime.totalCustomers), change: "All-time database total" },
     { metric: "New Customers", value: number(metrics.newCustomers), change: delta(comparison.newCustomers) },
@@ -338,6 +359,27 @@ export default function Reports() {
               icon={TrendingUp}
               color="text-orange-600"
             />
+            <Metric
+              title="Low Stock"
+              value={number(allTime.lowStockItems)}
+              note={`${number(allTime.inventoryItems)} inventory items`}
+              icon={AlertTriangle}
+              color="text-red-600"
+            />
+            <Metric
+              title="Appointments"
+              value={number(metrics.appointments)}
+              note={`Within ${report?.period?.label || "period"}`}
+              icon={CalendarCheck}
+              color="text-teal-600"
+            />
+            <Metric
+              title="Payment Mix"
+              value={number(paymentBreakdown.length)}
+              note="Active payment methods"
+              icon={CreditCard}
+              color="text-indigo-600"
+            />
           </div>
 
           <Card>
@@ -415,6 +457,67 @@ export default function Reports() {
                 ) : (
                   <p className="py-8 text-center text-gray-500">No orders for this period.</p>
                 )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payment Methods</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {paymentBreakdown.map((payment) => (
+                    <div key={payment.method} className="flex items-center justify-between gap-4">
+                      <div>
+                        <p>{payment.method}</p>
+                        <p className="text-sm text-gray-500">{number(payment.orders)} orders</p>
+                      </div>
+                      <p>{money(payment.revenue)}</p>
+                    </div>
+                  ))}
+                  {paymentBreakdown.length === 0 && (
+                    <p className="py-6 text-center text-gray-500">No payments for this period.</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Appointment Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {appointmentStatusBreakdown.length ? (
+                  <SimpleDonutChart data={appointmentStatusBreakdown} colors={STATUS_COLORS} />
+                ) : (
+                  <p className="py-8 text-center text-gray-500">No appointments for this period.</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Low Stock Alerts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {inventoryAlerts.map((product) => (
+                    <div key={product._id} className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="truncate">{product.productName}</p>
+                        <p className="text-sm text-gray-500 truncate">{product.category}</p>
+                      </div>
+                      <p className="text-sm text-red-600">
+                        {product.stockLevel}/{product.minStock}
+                      </p>
+                    </div>
+                  ))}
+                  {inventoryAlerts.length === 0 && (
+                    <p className="py-6 text-center text-gray-500">No low stock products.</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

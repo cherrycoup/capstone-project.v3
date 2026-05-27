@@ -6,6 +6,8 @@ import Customer from "../models/Customer.js";
 import User from "../models/User.js";
 import {
     cleanString,
+    isValidEmail,
+    isValidPhone,
     isStaffRole,
     isValidObjectId,
     normalizeEmail,
@@ -15,6 +17,7 @@ import {
     sendOrderCreatedEmail,
     sendOrderStatusEmail,
 } from "../utils/notifications.js";
+import { createPaymentCheckout } from "../utils/payments.js";
 
 const MEMBER_DISCOUNT_RATE = Number(process.env.MEMBER_DISCOUNT_RATE || 0.1);
 
@@ -270,6 +273,20 @@ export const createOrder = async (req, res) => {
             });
         }
 
+        if (!isValidEmail(email)) {
+            return res.status(400).json({
+                success: false,
+                message: "A valid email address is required",
+            });
+        }
+
+        if (!isValidPhone(contactNumber)) {
+            return res.status(400).json({
+                success: false,
+                message: "A valid contact number is required",
+            });
+        }
+
         if (!paymentMethods.has(paymentMethod)) {
             return res.status(400).json({
                 success: false,
@@ -332,6 +349,17 @@ export const createOrder = async (req, res) => {
         const memberDiscount = isMember ? roundMoney(packageBaseTotal * MEMBER_DISCOUNT_RATE) : 0;
         const discountAmount = roundMoney(packageDiscount + memberDiscount);
         const total = roundMoney(packageBaseTotal - memberDiscount);
+        const payment = await createPaymentCheckout({
+            paymentMethod,
+            amount: total,
+            referenceNumber,
+            customer: { name: fullName, email },
+            items: orderLines.map((line) => ({
+                name: line.product.productName,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+            })),
+        });
 
         newOrder = await Order.create({
             customerId: orderCustomerId,
@@ -342,6 +370,10 @@ export const createOrder = async (req, res) => {
             packageDealId: packageDeal?._id || null,
             packageName: packageDeal?.name || "",
             paymentMethod,
+            paymentStatus: payment.status,
+            paymentGateway: payment.provider,
+            paymentReference: payment.reference,
+            paymentCheckoutUrl: payment.checkoutUrl,
             referenceNumber,
             total,
             discountAmount,
@@ -391,6 +423,7 @@ export const createOrder = async (req, res) => {
             data: {
                 order: newOrder,
                 items: createdItems,
+                payment,
             },
         });
     } catch (error) {

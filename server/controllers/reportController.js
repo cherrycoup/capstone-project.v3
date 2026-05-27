@@ -277,6 +277,30 @@ const getStatusBreakdown = async (match) => {
     return rows.map((row) => ({ name: row._id || "Unknown", value: row.value || 0 }));
 };
 
+const getPaymentBreakdown = async (match) => {
+    const rows = await Order.aggregate([
+        { $match: match },
+        { $group: { _id: "$paymentMethod", value: { $sum: "$total" }, orders: { $sum: 1 } } },
+        { $sort: { value: -1 } },
+    ]);
+
+    return rows.map((row) => ({
+        method: row._id || "Unknown",
+        revenue: currency(row.value),
+        orders: row.orders || 0,
+    }));
+};
+
+const getAppointmentStatusBreakdown = async (match) => {
+    const rows = await Appointment.aggregate([
+        { $match: match },
+        { $group: { _id: "$status", value: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+    ]);
+
+    return rows.map((row) => ({ name: row._id || "Unknown", value: row.value || 0 }));
+};
+
 const getRepeatCustomers = async () => {
     const rows = await Order.aggregate([
         { $match: { customerId: { $ne: null } } },
@@ -322,6 +346,9 @@ export const getReportOverview = async (req, res) => {
             categorySales,
             topProducts,
             statusBreakdown,
+            paymentBreakdown,
+            appointmentStatusBreakdown,
+            lowStockProducts,
             recentOrders,
         ] = await Promise.all([
             revenueForRange({}),
@@ -358,6 +385,19 @@ export const getReportOverview = async (req, res) => {
             getCategorySales(match),
             getTopProducts(match),
             getStatusBreakdown(match),
+            getPaymentBreakdown(match),
+            getAppointmentStatusBreakdown(appointmentMatch),
+            Product.find({
+                $expr: {
+                    $and: [
+                        { $gt: ["$minStock", 0] },
+                        { $lt: ["$stockLevel", "$minStock"] },
+                    ],
+                },
+            })
+                .select("productName category stockLevel minStock price srp")
+                .sort({ stockLevel: 1 })
+                .limit(8),
             Order.find()
                 .populate("customerId", "name contactInfo role")
                 .sort({ createdAt: -1 })
@@ -413,7 +453,17 @@ export const getReportOverview = async (req, res) => {
                     categorySales,
                     topProducts,
                     statusBreakdown,
+                    paymentBreakdown,
+                    appointmentStatusBreakdown,
                 },
+                inventoryAlerts: lowStockProducts.map((product) => ({
+                    _id: product._id,
+                    productName: product.productName,
+                    category: product.category,
+                    stockLevel: product.stockLevel,
+                    minStock: product.minStock,
+                    inventoryValue: currency((product.stockLevel || 0) * (product.srp ?? product.price ?? 0)),
+                })),
                 recentOrders: recentOrders.map((order) => ({
                     _id: order._id,
                     referenceNumber: order.referenceNumber,

@@ -4,6 +4,17 @@ export const isValidObjectId = (value) => mongoose.Types.ObjectId.isValid(value)
 
 export const normalizeEmail = (value) => String(value || "").trim().toLowerCase();
 
+export const isValidEmail = (value) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizeEmail(value));
+
+export const normalizePhone = (value) =>
+    String(value || "").replace(/[^\d+]/g, "").trim();
+
+export const isValidPhone = (value) => {
+    const phone = normalizePhone(value);
+    return /^(09\d{9}|\+639\d{9}|\d{7,15})$/.test(phone);
+};
+
 export const cleanString = (value, maxLength = 255) => {
     if (value === undefined || value === null) return "";
     return String(value).trim().slice(0, maxLength);
@@ -48,6 +59,16 @@ export const parseOrderQuantity = (value) => {
     const numberValue = Number(value);
     if (!Number.isInteger(numberValue) || numberValue < 1 || numberValue > 999) return null;
     return numberValue;
+};
+
+export const isValidFutureDate = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
+    return date >= today;
 };
 
 export const isStrongPassword = (password) => {

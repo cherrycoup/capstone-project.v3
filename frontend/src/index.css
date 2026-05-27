@@ -2,6 +2,26 @@
 
 @import "tailwindcss";
 
+:root {
+    color-scheme: light;
+    --brand-ink: #12211b;
+    --brand-primary: #0f766e;
+    --brand-primary-dark: #115e59;
+    --brand-accent: #f4b942;
+    --brand-surface: #f7faf8;
+}
+
 * {
     font-family: 'Poppins', sans-serif;
+}
+
+body {
+    margin: 0;
+    background: var(--brand-surface);
+    color: var(--brand-ink);
+}
+
+::selection {
+    background: var(--brand-accent);
+    color: var(--brand-ink);
 }

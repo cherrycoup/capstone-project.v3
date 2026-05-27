@@ -22,6 +22,14 @@ const statusColors = {
   Cancelled: "bg-red-100 text-red-700",
 };
 
+const paymentStatusColors = {
+  pending: "bg-amber-100 text-amber-700",
+  checkout_created: "bg-cyan-100 text-cyan-700",
+  paid: "bg-green-100 text-green-700",
+  failed: "bg-red-100 text-red-700",
+  cash_on_delivery: "bg-gray-100 text-gray-700",
+};
+
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -168,7 +176,12 @@ export default function Orders() {
                     </td>
                     <td className="py-3 px-4">PHP {Number(order.total || 0).toLocaleString()}</td>
                     <td className="py-3 px-4 hidden xl:table-cell">
-                      <Badge variant="outline">{order.paymentMethod}</Badge>
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline">{order.paymentMethod}</Badge>
+                        <Badge className={paymentStatusColors[order.paymentStatus] || "bg-gray-100 text-gray-700"}>
+                          {String(order.paymentStatus || "pending").replaceAll("_", " ")}
+                        </Badge>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <Badge className={statusColors[order.status] || "bg-gray-100 text-gray-700"}>
@@ -223,10 +236,33 @@ export default function Orders() {
                   <p className="text-sm text-gray-500">Payment Method</p>
                   <p>{detailOrder.paymentMethod}</p>
                 </div>
+                <div>
+                  <p className="text-sm text-gray-500">Payment Status</p>
+                  <p>{String(detailOrder.paymentStatus || "pending").replaceAll("_", " ")}</p>
+                </div>
                 <div className="col-span-2">
                   <p className="text-sm text-gray-500">Reference Number</p>
                   <p>{detailOrder.referenceNumber}</p>
                 </div>
+                {detailOrder.paymentReference && (
+                  <div className="col-span-2">
+                    <p className="text-sm text-gray-500">Gateway Reference</p>
+                    <p>{detailOrder.paymentReference}</p>
+                  </div>
+                )}
+                {detailOrder.paymentCheckoutUrl && (
+                  <div className="col-span-2">
+                    <p className="text-sm text-gray-500">Checkout URL</p>
+                    <a
+                      href={detailOrder.paymentCheckoutUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      Open payment checkout
+                    </a>
+                  </div>
+                )}
               </div>
               <div>
                 <p className="text-sm text-gray-500">Delivery Address</p>

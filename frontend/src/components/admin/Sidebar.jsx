@@ -49,14 +49,14 @@ const Sidebar = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 text-white transform transition-transform duration-300
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[var(--brand-ink)] text-white transform transition-transform duration-300
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
         lg:translate-x-0 lg:static h-screen`}
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-800">
             <div className="flex items-center gap-3">
-              <Building2 className="w-8 h-8 text-blue-400" />
+              <Building2 className="w-8 h-8 text-[var(--brand-accent)]" />
               <div>
                 <h1 className="font-bold text-lg">JBM ELECTRO</h1>
                 <p className="text-xs text-gray-400">VENTURES</p>
@@ -78,8 +78,8 @@ const Sidebar = () => {
                 className={({ isActive }) =>
                   `w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                      ? "bg-[var(--brand-primary)] text-white"
+                      : "text-gray-300 hover:bg-white/10 hover:text-white"
                   }`
                 }
               >
@@ -91,7 +91,7 @@ const Sidebar = () => {
 
           <div className="p-4 border-t border-gray-800">
             <div className="flex items-center gap-3 px-4 py-3">
-              <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-[var(--brand-primary)] flex items-center justify-center overflow-hidden">
                 {user?.profileImageUrl ? (
                   <img src={user.profileImageUrl} alt="" className="h-full w-full object-cover" />
                 ) : (

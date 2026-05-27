@@ -3,6 +3,9 @@ import Customer from "../models/Customer.js";
 import User from "../models/User.js";
 import {
     cleanString,
+    isValidEmail,
+    isValidFutureDate,
+    isValidPhone,
     isStaffRole,
     isValidObjectId,
     normalizeEmail,
@@ -255,6 +258,13 @@ export const createAppointment = async (req, res) => {
             });
         }
 
+        if (!isValidFutureDate(req.body.date)) {
+            return res.status(400).json({
+                success: false,
+                message: "Appointment date cannot be in the past",
+            });
+        }
+
         if (!ALL_SLOTS.includes(timeSlot)) {
             return res.status(400).json({
                 success: false,
@@ -262,12 +272,17 @@ export const createAppointment = async (req, res) => {
             });
         }
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (range.start < today) {
+        if (submittedContactEmail && !isValidEmail(submittedContactEmail)) {
             return res.status(400).json({
                 success: false,
-                message: "Appointment date cannot be in the past",
+                message: "A valid email address is required",
+            });
+        }
+
+        if (submittedContactPhone && !isValidPhone(submittedContactPhone)) {
+            return res.status(400).json({
+                success: false,
+                message: "A valid phone number is required",
             });
         }
 

@@ -38,6 +38,26 @@ const orderSchema = new mongoose.Schema({
         enum: ["Credit Card", "Debit Card", "Cash", "Cash on Delivery", "Online Transfer", "GCash", "Maya", "Bank Transfer"],
         required: true
     },
+    paymentStatus: {
+        type: String,
+        enum: ["pending", "checkout_created", "paid", "failed", "cash_on_delivery"],
+        default: "pending"
+    },
+    paymentGateway: {
+        type: String,
+        trim: true,
+        default: "manual"
+    },
+    paymentReference: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    paymentCheckoutUrl: {
+        type: String,
+        trim: true,
+        default: ""
+    },
     referenceNumber: {
         type: String,
         unique: true,
