@@ -13,7 +13,7 @@ export const MEMBERSHIP_TIERS = {
     },
 };
 
-export const MEMBERSHIP_STATUSES = ["Pending", "Active", "Expired", "Suspended", "Rejected"];
+export const MEMBERSHIP_STATUSES = ["None", "Pending", "Active", "Expired", "Suspended", "Rejected"];
 
 export const getTierBenefits = (tier = "Silver") =>
     MEMBERSHIP_TIERS[tier] || MEMBERSHIP_TIERS.Silver;

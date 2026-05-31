@@ -136,13 +136,9 @@ export const customersAPI = {
 export const membershipAPI = {
     // Customer endpoints
     applyForMembership: (applicationData) => {
-        const formData = new FormData();
-        Object.keys(applicationData).forEach(key => {
-            formData.append(key, applicationData[key]);
-        });
-        return api.post('/memberships/apply', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const jsonData = { ...applicationData };
+        delete jsonData.idFile;
+        return api.post('/memberships/apply', jsonData);
     },
     getMyMembership: () => api.get('/memberships/me'),
     getApplicationStatus: () => api.get('/memberships/me/status'),

@@ -2,6 +2,7 @@ import Promotion from "../models/Promotion.js";
 import PromotionRedemption from "../models/PromotionRedemption.js";
 import {
     cleanString,
+    isStaffRole,
     isValidObjectId,
     parseCurrency,
     parseStockQuantity,
@@ -84,9 +85,16 @@ const validatePromotionPayload = (payload) => {
 
 export const getPromotions = async (req, res) => {
     try {
-        const includeInactive = String(req.query.includeInactive || "") === "true";
+        const includeInactive = String(req.query.includeInactive || "") === "true" && isStaffRole(req.user?.role);
         const query = includeInactive ? {} : { isActive: true };
-        const promotions = await Promotion.find(query).sort({ priority: 1, createdAt: -1 });
+        const now = new Date();
+        const promotions = await Promotion.find({
+            ...query,
+            ...(includeInactive ? {} : {
+                startsAt: { $lte: now },
+                $or: [{ endsAt: null }, { endsAt: { $gte: now } }],
+            }),
+        }).sort({ priority: 1, createdAt: -1 });
 
         res.status(200).json({
             success: true,

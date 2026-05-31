@@ -80,6 +80,12 @@ export default function ClientDashboard() {
       setActiveTab('order');
       // Clear the hash after processing
       window.history.replaceState(null, null, window.location.pathname);
+    } else if (hash === '#packages') {
+      setActiveTab('packages');
+      window.history.replaceState(null, null, window.location.pathname);
+    } else if (hash === '#products') {
+      setActiveTab('products');
+      window.history.replaceState(null, null, window.location.pathname);
     }
   }, []);
 
@@ -437,7 +443,7 @@ export default function ClientDashboard() {
         </div>
 
         <main className="flex-1 p-6 md:p-8 overflow-auto">
-          {activeTab === "home" && <ClientHome />}
+          {activeTab === "home" && <ClientHome onNavigateTab={setActiveTab} />}
           {activeTab === "products" && <ClientProducts />}
           {activeTab === "packages" && (
             <ClientPackages onSelectPackage={handleSelectPackage} />

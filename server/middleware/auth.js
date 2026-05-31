@@ -21,8 +21,8 @@ export const signAuthToken = (payload) =>
     jwt.sign(payload, getJwtSecret(), {
         algorithm: "HS256",
         expiresIn: process.env.JWT_EXPIRES_IN || "2d",
-        issuer: process.env.JWT_ISSUER || undefined,
-        audience: process.env.JWT_AUDIENCE || undefined,
+        ...(process.env.JWT_ISSUER ? { issuer: process.env.JWT_ISSUER } : {}),
+        ...(process.env.JWT_AUDIENCE ? { audience: process.env.JWT_AUDIENCE } : {}),
     });
 
 const getBearerToken = (req) => {
@@ -39,8 +39,8 @@ const getBearerToken = (req) => {
 const verifyAuthToken = (token) =>
     jwt.verify(token, getJwtSecret(), {
         algorithms: ["HS256"],
-        issuer: process.env.JWT_ISSUER || undefined,
-        audience: process.env.JWT_AUDIENCE || undefined,
+        ...(process.env.JWT_ISSUER ? { issuer: process.env.JWT_ISSUER } : {}),
+        ...(process.env.JWT_AUDIENCE ? { audience: process.env.JWT_AUDIENCE } : {}),
     });
 
 export const optionalAuth = (req, res, next) => {

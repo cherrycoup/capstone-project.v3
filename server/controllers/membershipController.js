@@ -3,13 +3,42 @@ import MembershipHistory from "../models/MembershipHistory.js";
 import User from "../models/User.js";
 import { cleanString, isValidObjectId } from "../utils/validation.js";
 
+const getAuthenticatedAccount = async (tokenUser) => {
+    const account = await User.findById(tokenUser?.id || tokenUser?._id);
+    return account?.role === "customer" ? account : null;
+};
+
+const getCustomerForAccount = async (account) => {
+    if (!account) return null;
+
+    let customer = account.customerId ? await Customer.findById(account.customerId) : null;
+
+    if (!customer) {
+        customer = await Customer.findOne({ "contactInfo.email": account.email });
+    }
+
+    if (customer && String(account.customerId || "") !== String(customer._id)) {
+        account.customerId = customer._id;
+        await account.save();
+    }
+
+    return customer;
+};
+
 /**
  * Customer: Apply for membership
  */
 export const applyForMembership = async (req, res) => {
     try {
         const { fullName, email, phone, address, membershipType, additionalNotes } = req.body;
-        const userId = req.user._id;
+        const account = await getAuthenticatedAccount(req.user);
+
+        if (!account) {
+            return res.status(403).json({
+                success: false,
+                message: "Customer account required"
+            });
+        }
 
         // Validate required fields
         if (!fullName || !email || !phone || !address || !membershipType) {
@@ -19,8 +48,8 @@ export const applyForMembership = async (req, res) => {
             });
         }
 
-        // Get or update customer
-        let customer = await Customer.findOne({ 'contactInfo.email': email });
+        // Get or update the customer profile attached to this account.
+        let customer = await getCustomerForAccount(account);
 
         if (!customer) {
             customer = new Customer({
@@ -39,6 +68,11 @@ export const applyForMembership = async (req, res) => {
                 }
             });
         } else {
+            customer.name = cleanString(fullName, 120);
+            customer.contactInfo.email = account.email;
+            customer.contactInfo.phone = cleanString(phone, 30);
+            customer.contactInfo.address = cleanString(address, 500);
+            customer.role = 'Member';
             customer.membership = {
                 status: 'Pending',
                 tier: membershipType,
@@ -59,6 +93,11 @@ export const applyForMembership = async (req, res) => {
 
         await customer.save();
 
+        if (String(account.customerId || "") !== String(customer._id)) {
+            account.customerId = customer._id;
+            await account.save();
+        }
+
         // Record membership history
         await MembershipHistory.create({
             customerId: customer._id,
@@ -68,7 +107,7 @@ export const applyForMembership = async (req, res) => {
             previousTier: '',
             newTier: membershipType,
             actorType: 'customer',
-            actorId: userId,
+            actorId: account._id,
             notes: `Applied for ${membershipType} membership`
         });
 
@@ -95,8 +134,8 @@ export const applyForMembership = async (req, res) => {
  */
 export const getMyMembership = async (req, res) => {
     try {
-        const userId = req.user._id;
-        const customer = await Customer.findOne({ 'contactInfo.email': req.user.email });
+        const account = await getAuthenticatedAccount(req.user);
+        const customer = await getCustomerForAccount(account);
 
         if (!customer) {
             return res.status(404).json({
@@ -125,7 +164,8 @@ export const getMyMembership = async (req, res) => {
  */
 export const getMyMembershipHistory = async (req, res) => {
     try {
-        const customer = await Customer.findOne({ 'contactInfo.email': req.user.email });
+        const account = await getAuthenticatedAccount(req.user);
+        const customer = await getCustomerForAccount(account);
 
         if (!customer) {
             return res.status(404).json({

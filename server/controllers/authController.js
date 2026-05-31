@@ -24,6 +24,16 @@ const buildDefaultMembership = ({ status = "Pending", tier = "Silver" } = {}) =>
     };
 };
 
+const buildNoMembership = () => ({
+    status: "None",
+    tier: "Silver",
+    pointsBalance: 0,
+    joinedAt: null,
+    approvedAt: null,
+    expiresAt: null,
+    renewalCount: 0,
+});
+
 const buildCustomerPayload = (user, customer) => ({
     id: user._id,
     customerId: customer?._id || user.customerId || null,
@@ -63,15 +73,15 @@ const getStaffAccountByToken = async (tokenUser) => {
     return user;
 };
 
-const getOrCreateMemberCustomer = async ({ name, email, phone, address }) => {
+const getOrCreateCustomerProfile = async ({ name, email, phone, address }) => {
     const existingCustomer = await Customer.findOne({ "contactInfo.email": email });
 
     if (existingCustomer) {
         existingCustomer.name = name || existingCustomer.name;
         existingCustomer.contactInfo.phone = phone || existingCustomer.contactInfo.phone;
         existingCustomer.contactInfo.address = address || existingCustomer.contactInfo.address;
-        existingCustomer.role = "Member";
-        existingCustomer.membership = existingCustomer.membership || buildDefaultMembership();
+        existingCustomer.role = existingCustomer.role || "Guest";
+        existingCustomer.membership = existingCustomer.membership || buildNoMembership();
         existingCustomer.updatedAt = new Date();
         await existingCustomer.save();
         return existingCustomer;
@@ -84,8 +94,8 @@ const getOrCreateMemberCustomer = async ({ name, email, phone, address }) => {
             phone,
             address,
         },
-        role: "Member",
-        membership: buildDefaultMembership(),
+        role: "Guest",
+        membership: buildNoMembership(),
     });
 };
 
@@ -161,6 +171,7 @@ export const loginCustomer = async (req, res) => {
             ...session,
         });
     } catch (error) {
+        console.error("Customer login error:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error",
@@ -219,6 +230,7 @@ export const loginStaff = async (req, res) => {
             user: payload,
         });
     } catch (error) {
+        console.error("Staff login error:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error",
@@ -274,6 +286,7 @@ export const getCurrentSession = async (req, res) => {
             message: "Invalid session",
         });
     } catch (error) {
+        console.error("Get current session error:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error",
@@ -318,7 +331,7 @@ export const registerCustomer = async (req, res) => {
             });
         }
 
-        const customer = await getOrCreateMemberCustomer({ name, email, phone, address });
+        const customer = await getOrCreateCustomerProfile({ name, email, phone, address });
         const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
         const newUser = await User.create({
@@ -331,16 +344,6 @@ export const registerCustomer = async (req, res) => {
             customerId: customer._id,
         });
 
-        await MembershipHistory.create({
-            customerId: customer._id,
-            action: "registered",
-            newStatus: customer.membership?.status || "Pending",
-            newTier: customer.membership?.tier || "Silver",
-            actorType: "customer",
-            actorId: newUser._id,
-            notes: "Customer registered for membership approval",
-        });
-
         const session = await issueCustomerSession(newUser);
 
         return res.status(201).json({
@@ -349,6 +352,7 @@ export const registerCustomer = async (req, res) => {
             ...session,
         });
     } catch (error) {
+        console.error("Registration error:", error);
         if (error.code === 11000) {
             return res.status(400).json({
                 success: false,
@@ -359,6 +363,7 @@ export const registerCustomer = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Internal server error",
+            error: process.env.NODE_ENV === "development" ? error.message : undefined,
         });
     }
 };
@@ -393,7 +398,7 @@ export const googleCustomerAuth = async (req, res) => {
         let user = await User.findOne({ email, role: "customer" });
 
         if (!user) {
-            const customer = await getOrCreateMemberCustomer({
+            const customer = await getOrCreateCustomerProfile({
                 name,
                 email,
                 phone: "Google account",
@@ -413,15 +418,6 @@ export const googleCustomerAuth = async (req, res) => {
                 emailVerified: true,
             });
 
-            await MembershipHistory.create({
-                customerId: customer._id,
-                action: "registered",
-                newStatus: customer.membership?.status || "Pending",
-                newTier: customer.membership?.tier || "Silver",
-                actorType: "customer",
-                actorId: user._id,
-                notes: "Customer registered with Google for membership approval",
-            });
         } else {
             if (user.googleId && user.googleId !== googleProfile.googleId) {
                 return res.status(401).json({
@@ -436,7 +432,7 @@ export const googleCustomerAuth = async (req, res) => {
             }
 
             if (!customer) {
-                customer = await getOrCreateMemberCustomer({
+                customer = await getOrCreateCustomerProfile({
                     name: user.name || name,
                     email,
                     phone: user.phone || "Google account",

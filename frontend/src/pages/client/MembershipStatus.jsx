@@ -37,15 +37,15 @@ export default function MembershipStatus() {
                 membershipAPI.getMyMembershipHistory()
             ]);
 
-            setMembership(membershipRes.data.membership);
-            setHistory(historyRes.data.history || []);
+            setMembership(membershipRes.data.data?.membership || null);
+            setHistory(historyRes.data.data?.history || []);
         } catch (error) {
             console.error('Error fetching membership data:', error);
             // Check if customer has membership info in their profile
             try {
                 const customerRes = await customersAPI.getMe();
-                if (customerRes.data.customer.membership) {
-                    setMembership(customerRes.data.customer.membership);
+                if (customerRes.data.data?.customer?.membership) {
+                    setMembership(customerRes.data.data.customer.membership);
                 }
             } catch (err) {
                 setError('Failed to load membership information');
