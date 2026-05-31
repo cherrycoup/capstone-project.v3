@@ -132,6 +132,47 @@ export const customersAPI = {
         api.get(`/customers/${id}/membership/history?limit=${limit}`)
 };
 
+// MEMBERSHIP APIs
+export const membershipAPI = {
+    // Customer endpoints
+    applyForMembership: (applicationData) => {
+        const formData = new FormData();
+        Object.keys(applicationData).forEach(key => {
+            formData.append(key, applicationData[key]);
+        });
+        return api.post('/memberships/apply', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+    },
+    getMyMembership: () => api.get('/memberships/me'),
+    getApplicationStatus: () => api.get('/memberships/me/status'),
+    getMembershipBenefits: (tier) => api.get(`/memberships/benefits/${tier}`),
+    getMyMembershipHistory: () => api.get('/memberships/me/history'),
+    renewMembership: (membshipData) => api.post('/memberships/renew', membshipData),
+    
+    // Admin endpoints
+    getAllApplications: (filters = {}) => {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+            if (value) params.append(key, value);
+        });
+        return api.get(`/memberships/applications?${params.toString()}`);
+    },
+    getApplicationById: (applicationId) => api.get(`/memberships/applications/${applicationId}`),
+    approveApplication: (applicationId, data) => 
+        api.post(`/memberships/applications/${applicationId}/approve`, data),
+    rejectApplication: (applicationId, data) => 
+        api.post(`/memberships/applications/${applicationId}/reject`, data),
+    getCustomerMembership: (customerId) => api.get(`/memberships/customer/${customerId}`),
+    updateMembershipTier: (customerId, tierData) => 
+        api.put(`/memberships/customer/${customerId}/tier`, tierData),
+    renewMembershipAdmin: (customerId, renewalData) => 
+        api.post(`/memberships/customer/${customerId}/renew`, renewalData),
+    suspendMembership: (customerId, data) => 
+        api.post(`/memberships/customer/${customerId}/suspend`, data),
+    getMembershipStats: () => api.get('/memberships/stats')
+};
+
 // ORDERS APIs
 export const ordersAPI = {
     getAll: () => api.get("/orders"),

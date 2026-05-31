@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Zap, Lightbulb, Wrench, Gauge } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { ArrowRight, Zap, Lightbulb, Wrench, Gauge, Heart } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import {
   Card,
@@ -10,6 +11,8 @@ import {
 } from '../../components/ui/card';
 
 export default function ClientHomepage() {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-200/50 shadow-sm">
@@ -23,13 +26,35 @@ export default function ClientHomepage() {
                 JBM Electro Ventures
               </span>
             </div>
-            <div className="flex gap-3 shrink-0">
-              <Link to="/login">
-                <Button variant="outline">Sign In</Button>
-              </Link>
-              <Link to="/signup">
-                <Button>Get Started</Button>
-              </Link>
+            <div className="flex gap-3 shrink-0 flex-wrap">
+              {user ? (
+                <>
+                  <Link to="/membership/status">
+                    <Button variant="outline" className="gap-2">
+                      <Heart className="h-4 w-4" />
+                      <span className="hidden sm:inline">Membership</span>
+                    </Button>
+                  </Link>
+                  <Link to="/dashboard">
+                    <Button>Dashboard</Button>
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/membership/apply">
+                    <Button variant="outline" className="gap-2">
+                      <Heart className="h-4 w-4" />
+                      <span className="hidden sm:inline">Become a Member</span>
+                    </Button>
+                  </Link>
+                  <Link to="/login">
+                    <Button variant="outline">Sign In</Button>
+                  </Link>
+                  <Link to="/signup">
+                    <Button>Get Started</Button>
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -50,16 +75,34 @@ export default function ClientHomepage() {
             tailored to meet your residential, commercial, and industrial needs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/login">
-              <Button size="lg" className="gap-2 w-full sm:w-auto">
-                Explore Products <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                Contact Us
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <Link to="/dashboard">
+                  <Button size="lg" className="gap-2 w-full sm:w-auto">
+                    Explore Products <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to="/membership/status">
+                  <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto">
+                    <Heart className="h-4 w-4" />
+                    My Membership
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/membership/apply">
+                  <Button size="lg" className="gap-2 w-full sm:w-auto">
+                    Become a Member <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto">
+                    Explore Products
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>

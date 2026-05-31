@@ -14,6 +14,7 @@ import staffRoutes from "./routes/staff.js"
 import packageDealsRoutes from "./routes/packageDeals.js"
 import reportsRoutes from "./routes/reports.js"
 import promotionsRoutes from "./routes/promotions.js"
+import membershipsRoutes from "./routes/memberships.js"
 
 dotenv.config()
 dotenv.config({ path: ".env.local", override: true })
@@ -64,6 +65,7 @@ app.use('/api/promotions', promotionsRoutes)
 app.use('/api/customers', customersRoutes)
 app.use('/api/orders', ordersRoutes)
 app.use('/api/reports', reportsRoutes)
+app.use('/api/memberships', membershipsRoutes)
 
 // Health check route
 app.get('/api/health', (req, res) => {

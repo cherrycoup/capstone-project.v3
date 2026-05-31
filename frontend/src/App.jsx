@@ -10,6 +10,7 @@ const Login = lazy(() => import("./pages/auth/Login"));
 const SignUp = lazy(() => import("./pages/auth/SignUp"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminPackages = lazy(() => import("./pages/admin/AdminPackages"));
+const AdminMemberships = lazy(() => import("./pages/admin/AdminMemberships"));
 const Appointments = lazy(() => import("./pages/admin/Appointments"));
 const Customers = lazy(() => import("./pages/admin/Customers"));
 const Inventory = lazy(() => import("./pages/admin/Inventory"));
@@ -19,6 +20,8 @@ const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
 const ClientDashboard = lazy(() => import("./pages/client/ClientDashboard"));
 const ClientHomepage = lazy(() => import("./pages/client/ClientHomepage"));
 const ClientTracking = lazy(() => import("./pages/client/ClientTracking"));
+const MembershipApplication = lazy(() => import("./pages/client/MembershipApplication"));
+const MembershipStatus = lazy(() => import("./pages/client/MembershipStatus"));
 const Settings = lazy(() => import("./pages/shared/Settings"));
 
 const PageLoader = () => (
@@ -50,6 +53,7 @@ const App = () => (
                         <Route path="/dashboard" element={<AdminDashboard />} />
                         <Route path="/inventory" element={<Inventory />} />
                         <Route path="/packages" element={<AdminPackages />} />
+                        <Route path="/memberships" element={<AdminMemberships />} />
                         <Route path="/orders" element={<Orders />} />
                         <Route path="/customers" element={<Customers />} />
                         <Route path="/staff" element={<StaffManagement />} />
@@ -76,6 +80,22 @@ const App = () => (
               element={
                 <ProtectedRoutes requireRole={["customer"]}>
                   <ClientTracking />
+                </ProtectedRoutes>
+              }
+            />
+            <Route
+              path="/membership/apply"
+              element={
+                <ProtectedRoutes requireRole={["customer"]}>
+                  <MembershipApplication />
+                </ProtectedRoutes>
+              }
+            />
+            <Route
+              path="/membership/status"
+              element={
+                <ProtectedRoutes requireRole={["customer"]}>
+                  <MembershipStatus />
                 </ProtectedRoutes>
               }
             />
