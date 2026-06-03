@@ -31,6 +31,7 @@ export default function ClientProducts() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [productDialogTab, setProductDialogTab] = useState("specifications");
+  const [modalQuantity, setModalQuantity] = useState(1);
   const { quantities, addToCart, updateQuantity, getTotalItems } = useCart();
   const navigate = useNavigate();
 
@@ -65,12 +66,14 @@ export default function ClientProducts() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleQuantityChange = (productId, change) => {
-    updateQuantity(productId, change);
+  const handleQuantityChange = (change) => {
+    const newQuantity = Math.max(1, modalQuantity + change);
+    const maxStock = selectedProduct ? getProductStock(selectedProduct) : Infinity;
+    setModalQuantity(Math.min(newQuantity, maxStock));
   };
 
   const handleAddToCart = (product) => {
-    const quantity = quantities[product._id] || 1;
+    const quantity = modalQuantity;
     const success = addToCart(product, quantity);
     
     if (success) {
@@ -91,6 +94,7 @@ export default function ClientProducts() {
   const openProductDetails = (product) => {
     setSelectedProduct(product);
     setProductDialogTab("specifications");
+    setModalQuantity(1);
     setProductDialogOpen(true);
   };
 
@@ -225,6 +229,7 @@ export default function ClientProducts() {
         onOpenChange={(open) => {
           if (!open) {
             setSelectedProduct(null);
+            setModalQuantity(1);
           }
           setProductDialogOpen(open);
         }}
@@ -334,17 +339,17 @@ export default function ClientProducts() {
                     <button
                       type="button"
                       className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      onClick={() => handleQuantityChange(selectedProduct._id, -1)}
-                      disabled={(quantities[selectedProduct._id] || 1) <= 1}
+                      onClick={() => handleQuantityChange(-1)}
+                      disabled={modalQuantity <= 1}
                     >
                       <Minus className="h-4 w-4" />
                     </button>
-                    <span className="w-14 text-center text-sm font-semibold">{quantities[selectedProduct._id] || 1}</span>
+                    <span className="w-14 text-center text-sm font-semibold">{modalQuantity}</span>
                     <button
                       type="button"
                       className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      onClick={() => handleQuantityChange(selectedProduct._id, 1)}
-                      disabled={(quantities[selectedProduct._id] || 1) >= getProductStock(selectedProduct)}
+                      onClick={() => handleQuantityChange(1)}
+                      disabled={modalQuantity >= getProductStock(selectedProduct)}
                     >
                       <Plus className="h-4 w-4" />
                     </button>
