@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ImageIcon, Search, ShoppingCart, Plus, Minus } from "lucide-react";
+import { ImageIcon, Search, ShoppingCart, Plus, Minus, Star } from "lucide-react";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import {
@@ -22,6 +22,11 @@ import { useCart } from "../../context/CartContext.jsx";
 import { useNavigate } from "react-router-dom";
 
 const getProductStock = (product) => Number(product?.stockLevel ?? product?.stock ?? 0);
+const normalizeFeatures = (features) => {
+  if (Array.isArray(features)) return features.filter(Boolean);
+  const raw = String(features || "").trim();
+  return raw ? raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean) : [];
+};
 
 export default function ClientProducts() {
   const [products, setProducts] = useState([]);
@@ -158,7 +163,6 @@ export default function ClientProducts() {
           const priceLabel = Number(product.srp ?? product.price).toLocaleString();
           const stockLabel = getProductStock(product);
           const tagLabel = product.category || "Saver";
-          const featureLabel = product.feature || `Best for ${product.category || "motorized vehicles"}`;
           const productSubtitle = product.description ? product.description.split(".")[0] + "." : "Premium performance and protection.";
           const lowStock = stockLabel > 0 && stockLabel <= 3;
 
@@ -170,12 +174,10 @@ export default function ClientProducts() {
             >
               <CardContent className="px-6 py-7">
                 <div className="flex items-center justify-between gap-3">
-                  <Badge className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+                  <Badge className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-700">
+                    <Star className="h-3 w-3" />
                     {tagLabel}
                   </Badge>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${lowStock ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"}`}>
-                    {stockLabel <= 0 ? "Out of stock" : lowStock ? `Only ${stockLabel} left` : `${stockLabel} in stock`}
-                  </span>
                 </div>
 
                 <div className="mx-auto mt-6 flex aspect-square w-full items-center justify-center overflow-hidden rounded-[2rem] bg-slate-100 shadow-sm">
@@ -195,14 +197,13 @@ export default function ClientProducts() {
                   <p className="text-sm text-slate-500">{productSubtitle}</p>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between gap-4">
-                  <div className="text-2xl font-bold text-slate-900">PHP {priceLabel}</div>
-                </div>
-
-                <div className="mt-4">
-                  <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-                    {featureLabel}
-                  </span>
+                <div className="mt-6 flex items-end justify-between gap-4">
+                  <div>
+                    <div className="text-2xl font-bold text-slate-900">PHP {priceLabel}</div>
+                    <div className={`mt-1 text-xs ${stockLabel <= 0 ? "text-rose-600" : lowStock ? "text-amber-600" : "text-emerald-600"}`}>
+                      {stockLabel <= 0 ? "Out of stock" : lowStock ? `Only ${stockLabel} left` : `${stockLabel} in stock`}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-6">
@@ -253,7 +254,8 @@ export default function ClientProducts() {
 
               <div className="space-y-6">
                 <div className="space-y-4">
-                  <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">
+                    <Star className="h-3 w-3" />
                     {selectedProduct.category || "Appliance Protection"}
                   </span>
                   <div className="text-4xl font-semibold leading-tight tracking-tight text-slate-950">
@@ -262,13 +264,15 @@ export default function ClientProducts() {
                   <div className="text-sm leading-6 text-slate-600">
                     {selectedProduct.description || "The best product for reliable performance and long-term durability."}
                   </div>
-                  <div className="flex flex-wrap items-center gap-4">
-                    <div className="text-4xl font-bold text-slate-900">
-                      PHP {Number(selectedProduct.srp ?? selectedProduct.price).toLocaleString()}
+                  <div className="mt-4 flex items-end justify-between gap-4">
+                    <div>
+                      <div className="text-4xl font-bold text-slate-900">
+                        PHP {Number(selectedProduct.srp ?? selectedProduct.price).toLocaleString()}
+                      </div>
+                      <div className={`mt-1 text-xs ${getProductStock(selectedProduct) <= 3 ? "text-rose-600" : "text-slate-500"}`}>
+                        {getProductStock(selectedProduct) <= 0 ? "Out of stock" : getProductStock(selectedProduct) <= 3 ? `Only ${getProductStock(selectedProduct)} left` : "In stock"}
+                      </div>
                     </div>
-                    <span className={`rounded-full px-3 py-1 text-sm font-semibold ${getProductStock(selectedProduct) <= 3 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"}`}>
-                      {getProductStock(selectedProduct) <= 0 ? "Out of stock" : getProductStock(selectedProduct) <= 3 ? `Only ${getProductStock(selectedProduct)} left!` : "In stock"}
-                    </span>
                   </div>
                 </div>
 
@@ -311,7 +315,7 @@ export default function ClientProducts() {
 
                   <TabsContent value="features" className="rounded-[2rem] border border-slate-200 bg-slate-50 p-6">
                     <ul className="space-y-3 text-sm leading-7 text-slate-700">
-                      {(selectedProduct.features || [
+                      {(normalizeFeatures(selectedProduct.features).length > 0 ? normalizeFeatures(selectedProduct.features) : [
                         "Protects against voltage surges and spikes.",
                         "Compact, easy-to-install design.",
                         "Compatible with most household appliances.",

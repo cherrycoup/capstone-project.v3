@@ -34,6 +34,10 @@ const emptyForm = {
   description: "",
   category: "",
   supplier: "",
+  specifications: "",
+  features: "",
+  compatibility: "",
+  warranty: "",
 };
 
 const formatMoney = (value) => `PHP ${Number(value || 0).toLocaleString()}`;
@@ -116,6 +120,10 @@ export default function Inventory() {
         supplier: formData.supplier.trim() || undefined,
         category: formData.category.trim(),
         description: formData.description.trim(),
+        specifications: formData.specifications.trim(),
+        features: formData.features.trim(),
+        compatibility: formData.compatibility.trim(),
+        warranty: formData.warranty.trim(),
         price,
         srp: price,
         imageUrl: formData.imageUrl || undefined,
@@ -170,7 +178,7 @@ export default function Inventory() {
   };
 
   const filteredInventory = products.filter((item) => {
-    const matchesSearch = [item.productName, item.sku, item.category, item.supplier, item.description]
+    const matchesSearch = [item.productName, item.sku, item.category, item.supplier, item.description, item.specifications, item.features, item.compatibility, item.warranty]
       .filter(Boolean)
       .join(" ")
       .toLowerCase()
@@ -418,6 +426,10 @@ export default function Inventory() {
                                 description: item.description || "",
                                 category: item.category || "",
                                 supplier: item.supplier || "",
+                                specifications: item.specifications || "",
+                                features: item.features || "",
+                                compatibility: item.compatibility || "",
+                                warranty: item.warranty || "",
                               });
                               setDialogOpen(true);
                             }}
@@ -631,6 +643,51 @@ export default function Inventory() {
                   onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                   className="mt-2 min-h-28 rounded-2xl"
                 />
+              </div>
+
+              <div className="rounded-3xl border border-slate-200 p-5">
+                <div className="grid gap-4">
+                  <div>
+                    <Label htmlFor="specifications">Specifications</Label>
+                    <Textarea
+                      id="specifications"
+                      placeholder="Enter product specifications (dimensions, voltage, capacity, etc.)"
+                      value={formData.specifications}
+                      onChange={(event) => setFormData({ ...formData, specifications: event.target.value })}
+                      className="mt-2 min-h-24 rounded-2xl"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="features">Features</Label>
+                    <Textarea
+                      id="features"
+                      placeholder="Enter product features, one per line"
+                      value={formData.features}
+                      onChange={(event) => setFormData({ ...formData, features: event.target.value })}
+                      className="mt-2 min-h-24 rounded-2xl"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="compatibility">Compatibility</Label>
+                    <Textarea
+                      id="compatibility"
+                      placeholder="Describe compatibility details"
+                      value={formData.compatibility}
+                      onChange={(event) => setFormData({ ...formData, compatibility: event.target.value })}
+                      className="mt-2 min-h-24 rounded-2xl"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="warranty">Warranty</Label>
+                    <Textarea
+                      id="warranty"
+                      placeholder="Enter warranty terms"
+                      value={formData.warranty}
+                      onChange={(event) => setFormData({ ...formData, warranty: event.target.value })}
+                      className="mt-2 min-h-24 rounded-2xl"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:justify-end">

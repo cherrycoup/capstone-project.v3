@@ -37,6 +37,26 @@ const productSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    specifications: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    features: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    compatibility: {
+        type: String,
+        trim: true,
+        default: ""
+    },
+    warranty: {
+        type: String,
+        trim: true,
+        default: ""
+    },
     imageUrl: {
         type: String,
         trim: true
@@ -77,6 +97,10 @@ productSchema.index({
     category: "text",
     supplier: "text",
     description: "text",
+    specifications: "text",
+    features: "text",
+    compatibility: "text",
+    warranty: "text",
 });
 
 const Product = mongoose.model("Product", productSchema);
