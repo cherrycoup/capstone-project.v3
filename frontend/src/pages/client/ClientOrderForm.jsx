@@ -136,6 +136,14 @@ export default function ClientOrderForm({ selectedPackage }) {
       toast.error("Please select a payment method");
       return;
     }
+    if (!referenceNumber) {
+      toast.error("Please enter the payment reference number");
+      return;
+    }
+    if (!proofOfPayment) {
+      toast.error("Please upload proof of payment for admin verification");
+      return;
+    }
     if (selectedPackage) {
       const hasInventoryItems = selectedPackageItems.some((item) => item.productId);
       if (!hasInventoryItems) {
@@ -466,20 +474,21 @@ export default function ClientOrderForm({ selectedPackage }) {
 
             <div className="space-y-2">
               <Label htmlFor="referenceNumber">
-                Reference Number (Optional)
+                Reference Number *
               </Label>
               <Input
                 id="referenceNumber"
                 placeholder={paymentMethod === "gcash"
-                  ? "PayMongo will generate the checkout reference"
+                  ? "Enter the GCash reference number"
                   : "Select GCash to proceed"}
                 value={referenceNumber}
                 onChange={(event) => setReferenceNumber(event.target.value)}
+                required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="proofOfPayment">Upload Proof of Payment (Optional)</Label>
+              <Label htmlFor="proofOfPayment">Upload Proof of Payment *</Label>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <Input
                   id="proofOfPayment"
@@ -487,6 +496,7 @@ export default function ClientOrderForm({ selectedPackage }) {
                   accept="image/*,.pdf"
                   onChange={handleFileChange}
                   className="cursor-pointer"
+                  required
                 />
                 {proofOfPayment && (
                   <Badge variant="secondary" className="gap-1 w-fit">
