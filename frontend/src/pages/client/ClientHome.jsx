@@ -23,7 +23,7 @@ import {
 import { Button } from "../../components/ui/button.jsx";
 import { Badge } from "../../components/ui/badge.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
-import { appointmentsAPI, membershipAPI, ordersAPI, packagesAPI, productsAPI, promotionsAPI } from "../../utils/api.js";
+import { appointmentsAPI, membershipAPI, ordersAPI, packagesAPI, productsAPI } from "../../utils/api.js";
 import { getTierDetails, isMembershipActive } from "../../utils/membership.js";
 
 export default function ClientHome({ onNavigateTab }) {
@@ -36,25 +36,22 @@ export default function ClientHome({ onNavigateTab }) {
     pending: 0,
   });
   const [membership, setMembership] = useState(null);
-  const [flashDeals, setFlashDeals] = useState([]);
   const [packageDeals, setPackageDeals] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [ordersResponse, appointmentsResponse, membershipResponse, promotionsResponse, packagesResponse, productsResponse] = await Promise.all([
+        const [ordersResponse, appointmentsResponse, membershipResponse, packagesResponse, productsResponse] = await Promise.all([
           user?.customerId ? ordersAPI.getByCustomer(user.customerId) : Promise.resolve({ data: { data: [] } }),
           appointmentsAPI.getMyAppointments(),
           membershipAPI.getMyMembership().catch(() => ({ data: { data: { membership: null } } })),
-          promotionsAPI.getAll().catch(() => ({ data: { data: [] } })),
           packagesAPI.getAll().catch(() => ({ data: { data: [] } })),
           productsAPI.getAll({ limit: 4 }).catch(() => ({ data: { data: [] } })),
         ]);
         const orders = ordersResponse.data.data || [];
         const appointments = appointmentsResponse.data.data || [];
         setMembership(membershipResponse.data.data?.membership || null);
-        setFlashDeals((promotionsResponse.data.data || []).slice(0, 3));
         setPackageDeals((packagesResponse.data.data || []).slice(0, 3));
         setFeaturedProducts(productsResponse.data.data || []);
         setStats({
@@ -85,7 +82,6 @@ export default function ClientHome({ onNavigateTab }) {
       />
 
       <DealsSection
-        flashDeals={flashDeals}
         packageDeals={packageDeals}
         onOpenPackages={() => onNavigateTab?.("packages")}
       />
@@ -99,24 +95,6 @@ export default function ClientHome({ onNavigateTab }) {
         <Stat title="Pending Orders" value={stats.pending} note="Awaiting confirmation" icon={Package} color="from-orange-500 to-red-600" />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Users className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-            <CardTitle>Member Benefits</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CardDescription className="text-base text-gray-700 leading-relaxed">
-              Members receive automatic order discounts, saved profile details, and private
-              tracking for orders and service appointments.
-            </CardDescription>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
@@ -167,49 +145,29 @@ function ProductsPreview({ products, onOpenProducts }) {
   );
 }
 
-function DealsSection({ flashDeals, packageDeals, onOpenPackages }) {
-  if (flashDeals.length === 0 && packageDeals.length === 0) {
-    return null;
-  }
-
+function DealsSection({ packageDeals, onOpenPackages }) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <Card className="border-orange-100 shadow-sm">
+      <Card className="border-blue-100 shadow-sm bg-gradient-to-r from-sky-50 via-white to-slate-50">
         <CardHeader>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-xl">
-                <Flame className="h-5 w-5 text-orange-600" />
-                Flash Deals
+              <div className="inline-flex items-center rounded-full bg-cyan-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-cyan-700">
+                Member Savings
+              </div>
+              <CardTitle className="mt-3 flex items-center gap-2 text-xl">
+                <ShieldCheck className="h-5 w-5 text-cyan-600" />
+                Membership Benefits
               </CardTitle>
-              <CardDescription>Active discounts you can use on checkout</CardDescription>
+              <CardDescription>Exclusive perks for active members</CardDescription>
             </div>
-            <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
-              Limited
-            </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {flashDeals.length > 0 ? flashDeals.map((deal) => (
-            <div key={deal._id} className="rounded-lg border border-orange-100 bg-orange-50/60 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-gray-900">{deal.name}</p>
-                  <p className="mt-1 text-sm text-gray-600">{deal.description || "Apply this deal to eligible orders."}</p>
-                </div>
-                <div className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-bold text-orange-700">
-                  {deal.type === "percentage" ? `${deal.value}%` : `PHP ${Number(deal.value).toLocaleString()}`}
-                </div>
-              </div>
-              {deal.code && (
-                <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-orange-700">
-                  Code: {deal.code}
-                </p>
-              )}
-            </div>
-          )) : (
-            <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-600">No flash deals are active right now.</p>
-          )}
+        <CardContent>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-semibold text-slate-900">Unlock up to 40% member discounts and enjoy priority access to package deals.</p>
+            <p className="mt-2 text-sm text-slate-600">Join today and make every order more valuable with exclusive pricing designed for members.</p>
+          </div>
         </CardContent>
       </Card>
 
@@ -229,7 +187,7 @@ function DealsSection({ flashDeals, packageDeals, onOpenPackages }) {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {packageDeals.map((pkg) => (
+          {packageDeals.length > 0 ? packageDeals.map((pkg) => (
             <div key={pkg._id} className="flex items-center justify-between gap-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
               <div className="min-w-0">
                 <p className="truncate font-semibold text-gray-900">{pkg.name}</p>
@@ -242,8 +200,7 @@ function DealsSection({ flashDeals, packageDeals, onOpenPackages }) {
                 </span>
               )}
             </div>
-          ))}
-          {packageDeals.length === 0 && (
+          )) : (
             <p className="rounded-lg bg-gray-50 p-4 text-sm text-gray-600">No package deals are available right now.</p>
           )}
         </CardContent>
