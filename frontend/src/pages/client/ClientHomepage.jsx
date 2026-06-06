@@ -70,12 +70,6 @@ export default function ClientHomepage() {
                 </>
             ) : (
               <>
-                <Link to="/signup">
-                  <Button variant="outline" className="gap-2">
-                    <Heart className="h-4 w-4" />
-                    <span className="hidden sm:inline">Unlock Deals</span>
-                  </Button>
-                </Link>
                   <Link to="/login">
                     <Button variant="outline">Sign In</Button>
                   </Link>
@@ -120,11 +114,11 @@ export default function ClientHomepage() {
               </>
             ) : (
               <>
-                <Link to="/signup">
+                <a href="mailto:support@jbm.com.ph">
                   <Button size="lg" className="gap-2 w-full sm:w-auto">
-                    Sign Up for Deals <ArrowRight className="h-4 w-4" />
+                    Contact Us <ArrowRight className="h-4 w-4" />
                   </Button>
-                </Link>
+                </a>
                 <Link to="/login">
                   <Button size="lg" variant="outline" className="w-full sm:w-auto">
                     Explore Products
@@ -360,7 +354,7 @@ function OfferPreview({ flashDeals, packageDeals, user }) {
               <Flame className="h-4 w-4" />
               Live customer offers
             </div>
-            <h2 className="mt-4 text-3xl font-bold text-gray-900">Flash Deals & Package Savings</h2>
+            <h2 className="mt-4 text-3xl font-bold text-gray-900">Package Deals & Package Savings</h2>
             <p className="mt-2 max-w-2xl text-gray-600">
               Sign up to order faster, track purchases, and apply for member discounts on selected deals.
             </p>
@@ -378,7 +372,7 @@ function OfferPreview({ flashDeals, packageDeals, user }) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Flame className="h-5 w-5 text-orange-600" />
-                Flash Deals
+                Package Deals
               </CardTitle>
               <CardDescription>Promo codes and automatic discounts currently available</CardDescription>
             </CardHeader>
