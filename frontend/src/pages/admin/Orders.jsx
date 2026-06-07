@@ -154,6 +154,7 @@ export default function Orders() {
                   <th className="text-left py-3 px-4 hidden md:table-cell">Date</th>
                   <th className="text-left py-3 px-4">Amount</th>
                   <th className="text-left py-3 px-4">Payment</th>
+                  <th className="text-left py-3 px-4">Reference</th>
                   <th className="text-left py-3 px-4">Status</th>
                   <th className="text-left py-3 px-4">Actions</th>
                 </tr>
@@ -183,6 +184,11 @@ export default function Orders() {
                       </div>
                     </td>
                     <td className="py-3 px-4">
+                      {String(order.paymentMethod || "").toLowerCase().includes("gcash")
+                        ? (order.referenceNumber || "N/A")
+                        : "N/A"}
+                    </td>
+                    <td className="py-3 px-4">
                       <Badge className={statusColors[order.status] || "bg-gray-100 text-gray-700"}>
                         {order.status}
                       </Badge>
@@ -196,7 +202,7 @@ export default function Orders() {
                 ))}
                 {filteredOrders.length === 0 && (
                   <tr>
-                    <td className="py-8 px-4 text-center text-gray-500" colSpan={7}>
+                    <td className="py-8 px-4 text-center text-gray-500" colSpan={8}>
                       No orders found.
                     </td>
                   </tr>
