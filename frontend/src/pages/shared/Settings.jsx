@@ -62,7 +62,12 @@ export default function Settings() {
 
   const isCustomer = user?.type === "customer";
   const isStaff = user?.type === "staff";
-
+  const displayRole = isCustomer
+    ? (user?.membership?.status === "Active" ? "Member" : "Guest")
+    : user?.role || "Staff";
+  const accountLabel = isCustomer
+    ? `${displayRole} customer account`
+    : `${displayRole} account`;
   const handleProfileFile = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -167,7 +172,7 @@ export default function Settings() {
               </div>
                 <div className="rounded-md bg-green-50 text-green-700 px-3 py-2 text-sm flex gap-2">
                 <ShieldCheck className="h-4 w-4 mt-0.5" />
-                <span>{isCustomer ? "Member customer account" : `${user?.role || "Staff"} account`}</span>
+                <span>{accountLabel}</span>
               </div>
               <div className="rounded-md bg-blue-50 text-blue-700 px-3 py-2 text-sm flex gap-2">
                 <ImageIcon className="h-4 w-4 mt-0.5" />
@@ -250,7 +255,7 @@ export default function Settings() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
-                    <Input id="role" value={isCustomer ? "Member" : user?.role || "Staff"} disabled />
+                    <Input id="role" value={displayRole} disabled />
                   </div>
                 </div>
 

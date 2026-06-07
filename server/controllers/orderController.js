@@ -29,8 +29,6 @@ import {
     recordPromotionRedemptions,
 } from "../utils/promotionEngine.js";
 
-const MEMBER_DISCOUNT_RATE = Number(process.env.MEMBER_DISCOUNT_RATE || 0.1);
-
 const paymentMethodAliases = new Map([
     ["gcash", "GCash"],
     ["cod", "Cash on Delivery"],
@@ -389,21 +387,7 @@ export const createOrder = async (req, res) => {
 
         subtotal = roundMoney(subtotal);
         const packageBaseTotal = packageDeal ? roundMoney(packageDeal.price) : subtotal;
-        const packageDiscount = packageDeal ? Math.max(0, roundMoney(subtotal - packageBaseTotal)) : 0;
-        const memberDiscountRate = activeMembership
-            ? activeMembership.discountRate
-            : customer?.role === "Member" && !customer?.membership ? MEMBER_DISCOUNT_RATE : 0;
-        const memberDiscount = memberDiscountRate ? roundMoney(packageBaseTotal * memberDiscountRate) : 0;
-        const promotionBaseTotal = roundMoney(packageBaseTotal - memberDiscount);
-        const promotionResult = await calculatePromotions({
-            promoCode: promotionCode,
-            customer,
-            lines: orderLines,
-            orderSubtotal: promotionBaseTotal,
-        });
-        const promotionDiscount = roundMoney(promotionResult.discountAmount);
-        const discountAmount = roundMoney(packageDiscount + memberDiscount + promotionDiscount);
-        const total = roundMoney(Math.max(0, promotionBaseTotal - promotionDiscount));
+        const total = packageBaseTotal;
         const payment = await createPaymentCheckout({
             paymentMethod,
             amount: total,
@@ -431,11 +415,11 @@ export const createOrder = async (req, res) => {
             paymentCheckoutUrl: payment.checkoutUrl,
             referenceNumber,
             total,
-            discountAmount,
-            membershipDiscountAmount: memberDiscount,
-            promotionDiscountAmount: promotionDiscount,
+            discountAmount: 0,
+            membershipDiscountAmount: 0,
+            promotionDiscountAmount: 0,
             promotionCode,
-            appliedPromotions: promotionResult.appliedPromotions,
+            appliedPromotions: [],
             notes: packageDeal ? `${notes ? `${notes} | ` : ""}Package: ${packageDeal.name}` : notes,
             status: "Pending",
         });

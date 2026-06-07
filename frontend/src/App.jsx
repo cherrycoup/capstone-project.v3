@@ -44,7 +44,7 @@ const App = () => (
             <Route
               path="/admin/*"
               element={
-                <ProtectedRoutes requireRole={["Admin", "admin"]}>
+                <ProtectedRoutes requireRole={["Admin", "Staff"]}>
                   <div style={styles.layoutContainer}>
                     <Sidebar />
                     <div style={styles.mainContent}>
@@ -56,7 +56,14 @@ const App = () => (
                         <Route path="/memberships" element={<AdminMemberships />} />
                         <Route path="/orders" element={<Orders />} />
                         <Route path="/customers" element={<Customers />} />
-                        <Route path="/staff" element={<StaffManagement />} />
+                        <Route
+                          path="/staff"
+                          element={
+                            <ProtectedRoutes requireRole={["Admin"]}>
+                              <StaffManagement />
+                            </ProtectedRoutes>
+                          }
+                        />
                         <Route path="/appointments" element={<Appointments />} />
                         <Route path="/reports" element={<Reports />} />
                         <Route path="/settings" element={<Settings />} />

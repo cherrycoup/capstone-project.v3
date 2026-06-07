@@ -17,9 +17,9 @@ const defaultMembership = ({ status = "Active", tier = "Silver" } = {}) => {
         status,
         tier,
         pointsBalance: 0,
-        joinedAt: new Date(),
+        joinedAt: status === "None" ? null : new Date(),
         approvedAt: status === "Active" ? new Date() : null,
-        expiresAt,
+        expiresAt: status === "None" ? null : expiresAt,
         renewalCount: 0,
     };
 };
@@ -29,7 +29,7 @@ const mapCustomerInput = (body) => {
     const tier = MEMBERSHIP_TIERS[body.membership?.tier] ? body.membership.tier : "Silver";
     const status = MEMBERSHIP_STATUSES.includes(body.membership?.status)
         ? body.membership.status
-        : body.role === "Guest" ? "Pending" : "Active";
+        : body.role === "Guest" ? "None" : "Active";
 
     return {
         name: cleanString(body.name, 120),
@@ -153,8 +153,8 @@ export const updateCurrentCustomer = async (req, res) => {
                     address,
                 },
                 profileImageUrl,
-                role: "Member",
-                membership: defaultMembership(),
+                role: "Guest",
+                membership: defaultMembership({ status: "None" }),
             });
             user.customerId = customer._id;
             await recordMembershipHistory({
@@ -171,8 +171,8 @@ export const updateCurrentCustomer = async (req, res) => {
             customer.contactInfo.phone = phone;
             customer.contactInfo.address = address;
             customer.profileImageUrl = profileImageUrl;
-            customer.role = "Member";
-            customer.membership = customer.membership || defaultMembership();
+            customer.role = customer.role === "Member" ? "Member" : "Guest";
+            customer.membership = customer.membership || defaultMembership({ status: "None" });
             customer.updatedAt = new Date();
             await customer.save();
         }
@@ -361,7 +361,7 @@ export const updateMembership = async (req, res) => {
         const nextPoints = Math.max(0, previousPoints + pointsAdjustment);
         const isApproval = previousStatus !== "Active" && status === "Active";
 
-        customer.role = "Member";
+        customer.role = status === "Active" ? "Member" : "Guest";
         customer.membership = {
             ...(customer.membership?.toObject ? customer.membership.toObject() : customer.membership || defaultMembership()),
             status,

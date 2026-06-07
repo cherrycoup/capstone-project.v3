@@ -7,7 +7,6 @@ import {
   Plus,
   ShoppingCart,
   Trash2,
-  Upload,
 } from "lucide-react";
 import { Alert, AlertDescription } from "../../components/ui/alert.jsx";
 import { Badge } from "../../components/ui/badge.jsx";
@@ -57,7 +56,6 @@ export default function ClientOrderForm({ selectedPackage }) {
   const [email, setEmail] = useState(user?.email || "");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
-  const [proofOfPayment, setProofOfPayment] = useState(null);
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -104,12 +102,6 @@ export default function ClientOrderForm({ selectedPackage }) {
     setSelectedIds(cart.map((item) => item._id));
   };
 
-  const handleFileChange = (event) => {
-    if (event.target.files && event.target.files[0]) {
-      setProofOfPayment(event.target.files[0]);
-    }
-  };
-
   const resetForm = () => {
     clearCart();
     setName(user?.name || "");
@@ -118,7 +110,6 @@ export default function ClientOrderForm({ selectedPackage }) {
     setEmail(user?.email || "");
     setPaymentMethod("");
     setReferenceNumber("");
-    setProofOfPayment(null);
     setSpecialInstructions("");
   };
 
@@ -139,10 +130,6 @@ export default function ClientOrderForm({ selectedPackage }) {
     }
     if (paymentMethod === "gcash" && !referenceNumber) {
       toast.error("Please enter the payment reference number for GCash");
-      return;
-    }
-    if (paymentMethod === "gcash" && !proofOfPayment) {
-      toast.error("Please upload proof of payment for GCash verification");
       return;
     }
     if (selectedPackage) {
@@ -491,28 +478,6 @@ export default function ClientOrderForm({ selectedPackage }) {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="proofOfPayment">
-                Upload Proof of Payment {paymentMethod === "gcash" ? "*" : "(optional)"}
-              </Label>
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <Input
-                  id="proofOfPayment"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleFileChange}
-                  className="cursor-pointer"
-                  required={paymentMethod === "gcash"}
-                />
-                {proofOfPayment && (
-                  <Badge variant="secondary" className="gap-1 w-fit">
-                    <Upload className="h-3 w-3" />
-                    {proofOfPayment.name}
-                  </Badge>
-                )}
-              </div>
-            </div>
-
             <Alert className="bg-amber-50 border-amber-200 flex gap-3">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
               <AlertDescription className="text-amber-800">
@@ -531,23 +496,13 @@ export default function ClientOrderForm({ selectedPackage }) {
               <span>Subtotal:</span>
               <span>PHP {calculateTotal().toLocaleString()}</span>
             </div>
-            {user?.memberRole === "Member" && (
-              <div className="flex justify-between text-sm text-green-700">
-                <span>Member Discount Estimate:</span>
-                <span>- PHP {Math.round(calculateTotal() * 0.1).toLocaleString()}</span>
-              </div>
-            )}
             <div className="flex justify-between text-sm text-gray-600">
               <span>Delivery Fee:</span>
               <span>To be collected by courier</span>
             </div>
             <div className="border-t pt-4 flex justify-between text-2xl font-bold">
               <span>Total:</span>
-              <span className="text-blue-600">
-                PHP {(user?.memberRole === "Member"
-                  ? Math.max(0, calculateTotal() - Math.round(calculateTotal() * 0.1))
-                  : calculateTotal()).toLocaleString()}
-              </span>
+              <span className="text-blue-600">PHP {calculateTotal().toLocaleString()}</span>
             </div>
 
             <Button type="submit" className="w-full" size="lg" disabled={submitting}>

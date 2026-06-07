@@ -60,7 +60,7 @@ export const applyForMembership = async (req, res) => {
                     phone: cleanString(phone, 30),
                     address: cleanString(address, 500)
                 },
-                role: 'Member',
+                role: 'Guest',
                 membership: {
                     status: 'Pending',
                     tier: membershipType,
@@ -73,7 +73,7 @@ export const applyForMembership = async (req, res) => {
             customer.contactInfo.email = account.email;
             customer.contactInfo.phone = cleanString(phone, 30);
             customer.contactInfo.address = cleanString(address, 500);
-            customer.role = 'Member';
+            customer.role = customer.role === 'Member' ? 'Member' : 'Guest';
             customer.membership = {
                 status: 'Pending',
                 tier: membershipType,

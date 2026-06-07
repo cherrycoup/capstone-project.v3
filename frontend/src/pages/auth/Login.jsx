@@ -31,8 +31,8 @@ export default function Login({ mode = "customer" }) {
 
             if (response.data.success) {
                 login(response.data.user, response.data.token);
-                const isAdmin = response.data.user?.type === "staff" && String(response.data.user?.role).toLowerCase() === "admin";
-                navigate(isAdmin ? "/admin" : "/dashboard");
+                const isStaffUser = response.data.user?.type === "staff";
+                navigate(isStaffUser ? "/admin" : "/dashboard");
             }
         } catch (err) {
             setError(err.response?.data?.message || "Login failed");

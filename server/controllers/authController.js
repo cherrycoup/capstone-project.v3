@@ -47,8 +47,8 @@ const buildCustomerPayload = (user, customer) => ({
     address: user.address || customer?.contactInfo?.address || "",
     profileImageUrl: user.profileImageUrl || customer?.profileImageUrl || "",
     role: user.role,
-    memberRole: customer?.role || "Member",
-    membership: customer?.membership || buildDefaultMembership(),
+    memberRole: customer?.membership?.status === "Active" ? "Member" : "Guest",
+    membership: customer?.membership || buildNoMembership(),
     emailVerified: Boolean(user.emailVerified),
     type: "customer",
 });

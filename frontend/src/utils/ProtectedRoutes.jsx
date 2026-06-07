@@ -4,7 +4,8 @@ import { AuthContext } from "../context/AuthContext";
 
 const ProtectedRoutes = ({ children, requireRole }) => {
     const { user, loading } = useContext(AuthContext);
-    const isAdminRoute = requireRole?.some((role) => String(role).toLowerCase() === "admin");
+    const normalizedRequireRoles = (requireRole || []).map((role) => String(role).toLowerCase());
+    const isAdminRoute = normalizedRequireRoles.some((role) => role === "admin" || role === "staff");
     const loginPath = isAdminRoute ? "/admin/login" : "/login";
 
     if (loading) {
@@ -18,7 +19,7 @@ const ProtectedRoutes = ({ children, requireRole }) => {
 
     if (!user) return <Navigate to={loginPath} replace />;
 
-    const roleAllowed = !requireRole || requireRole.includes(user.role);
+    const roleAllowed = !requireRole || normalizedRequireRoles.includes(String(user.role).toLowerCase());
     const typeAllowed = !isAdminRoute || user.type === "staff";
 
     if (!roleAllowed || !typeAllowed) {
