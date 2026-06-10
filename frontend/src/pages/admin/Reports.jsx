@@ -231,12 +231,13 @@ export default function Reports() {
   const comparison = report?.comparison || {};
   const allTime = report?.allTime || {};
   const revenueTrend = report?.charts?.revenueTrend || [];
-  const categoryData = report?.charts?.categorySales?.length
-    ? report.charts.categorySales
-    : [{ category: "No sales", sales: 0 }];
+  const categoryData = report?.charts?.categorySales || [];
   const productPerformance = report?.charts?.topProducts || [];
   const statusBreakdown = report?.charts?.statusBreakdown || [];
   const paymentBreakdown = report?.charts?.paymentBreakdown || [];
+  const paymentMethodCount = paymentBreakdown.filter(
+    (payment) => payment.orders > 0 && payment.method && payment.method !== "Unknown"
+  ).length;
   const appointmentStatusBreakdown = report?.charts?.appointmentStatusBreakdown || [];
   const inventoryAlerts = report?.inventoryAlerts || [];
   const customerMetrics = [
@@ -295,7 +296,7 @@ export default function Reports() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="last7">Last 7 days</SelectItem>
               <SelectItem value="monthly">Monthly</SelectItem>
             </SelectContent>
           </Select>
@@ -375,8 +376,8 @@ export default function Reports() {
             />
             <Metric
               title="Payment Mix"
-              value={number(paymentBreakdown.length)}
-              note="Active payment methods"
+              value={number(paymentMethodCount)}
+              note="Unique active payment methods"
               icon={CreditCard}
               color="text-indigo-600"
             />
@@ -397,7 +398,11 @@ export default function Reports() {
                 <CardTitle>Sales by Category</CardTitle>
               </CardHeader>
               <CardContent>
-                <SimpleBarChart data={categoryData} xKey="category" yKey="sales" color="#3b82f6" />
+                {categoryData.length ? (
+                  <SimpleBarChart data={categoryData} xKey="category" yKey="sales" color="#3b82f6" />
+                ) : (
+                  <p className="py-8 text-center text-gray-500">No category sales for this period.</p>
+                )}
               </CardContent>
             </Card>
 

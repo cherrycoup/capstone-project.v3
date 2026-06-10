@@ -16,7 +16,7 @@ import {
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { Button } from "../ui/button.jsx";
-import logoSrc from "../../assets/logo (1).webp";
+import logoSrc from "../../assets/logo.webp";
 
 const menuItems = [
   { name: "Dashboard", path: "/admin/dashboard", icon: <Home className="h-5 w-5" />, isParent: true },
@@ -86,24 +86,32 @@ export const Sidebar = ({ isMobile = false, open, onClose }) => {
         </div>
 
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {menuItems.map(({ name, path, icon, isParent }) => (
-            <NavLink
-              key={name}
-              to={path}
-              end={isParent}
-              onClick={() => isMobile && (onClose ? onClose() : setIsOpen(false))}
-              className={({ isActive }) =>
-                `w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-                  isActive
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                    : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                }`
+          {menuItems
+            .filter(({ name }) => {
+              const userRole = String(user?.role || "").toLowerCase();
+              if (userRole === "staff") {
+                return name !== "Staff" && name !== "Memberships";
               }
-            >
-              {icon}
-              <span className="text-sm font-medium">{name}</span>
-            </NavLink>
-          ))}
+              return true;
+            })
+            .map(({ name, path, icon, isParent }) => (
+              <NavLink
+                key={name}
+                to={path}
+                end={isParent}
+                onClick={() => isMobile && (onClose ? onClose() : setIsOpen(false))}
+                className={({ isActive }) =>
+                  `w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                    isActive
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                      : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                  }`
+                }
+              >
+                {icon}
+                <span className="text-sm font-medium">{name}</span>
+              </NavLink>
+            ))}
         </nav>
 
         <div className="p-4 border-t border-slate-700 space-y-3">

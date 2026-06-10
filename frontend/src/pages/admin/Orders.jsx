@@ -31,11 +31,18 @@ const paymentStatusColors = {
 
 const getOrderTypeLabel = (order) => {
   if (order.orderType === "membership") return "Membership";
-  if (order.membershipType && ["Prime", "Stater", "Bronze", "Silver", "Gold"].includes(order.membershipType)) return "Membership";
+  if (order.membershipType) return "Membership";
   if (order.packageDealId || order.packageName) return "Package";
   if (order.items?.length > 0) return "Product";
   return "Regular";
 };
+
+const getDiscountLabel = (order) => {
+  if (order.membershipDiscountAmount > 0) return "Member discount";
+  return "Discount";
+};
+
+const formatCurrency = (value) => `PHP ${Number(value || 0).toLocaleString()}`;
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
@@ -105,6 +112,11 @@ export default function Orders() {
     try {
       const response = await ordersAPI.getById(order._id);
       setOrderDetails(response.data.data);
+      // focus the status selector so admins land on status controls
+      setTimeout(() => {
+        const el = document.getElementById("order-status-select-trigger");
+        if (el && typeof el.focus === "function") el.focus();
+      }, 200);
     } catch (error) {
       console.error("Error fetching order details:", error);
       setOrderDetails({ order, items: [] });
@@ -148,6 +160,7 @@ export default function Orders() {
 
   const detailOrder = orderDetails?.order || selectedOrder;
   const detailItems = orderDetails?.items || [];
+  const canCompleteOrder = detailOrder?.status === "Confirmed";
 
   return (
     <div className="space-y-6 p-6">
@@ -205,7 +218,6 @@ export default function Orders() {
                     <th className="text-left py-3 px-4">Order ID</th>
                     <th className="text-left py-3 px-4">Customer</th>
                     <th className="text-left py-3 px-4">Type</th>
-                    <th className="text-left py-3 px-4">Package / Item</th>
                     <th className="text-left py-3 px-4 hidden md:table-cell">Date</th>
                     <th className="text-left py-3 px-4">Amount</th>
                     <th className="text-left py-3 px-4">Payment</th>
@@ -229,13 +241,33 @@ export default function Orders() {
                     <td className="py-3 px-4">
                       <Badge variant="outline">{getOrderTypeLabel(order)}</Badge>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="text-sm">{order.orderType === "membership" ? (order.notes?.split(" | ").pop() || "Membership") : "Product Order"}</span>
-                    </td>
                     <td className="py-3 px-4 hidden md:table-cell">
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="py-3 px-4">PHP {Number(order.total || 0).toLocaleString()}</td>
+                    <td className="py-3 px-4">
+                      {(
+                        (order.membershipDiscountAmount || 0) +
+                        (order.promotionDiscountAmount || 0) +
+                        (order.discountAmount || 0)
+                      ) > 0 ? (
+                        (() => {
+                          const membershipDeduct = Number(order.membershipDiscountAmount || 0);
+                          const promotionDeduct = Number(order.promotionDiscountAmount || 0);
+                          const fallbackDeduct = Number(order.discountAmount || 0);
+                          const selectedDeduct = membershipDeduct > 0 ? membershipDeduct : promotionDeduct > 0 ? promotionDeduct : fallbackDeduct;
+                          const original = Number(order.total || 0) + selectedDeduct;
+                          return (
+                            <div className="space-y-1">
+                              <span className="font-semibold text-emerald-700">{formatCurrency(order.total)}</span>
+                              <span className="text-xs text-gray-500 line-through">{formatCurrency(original)}</span>
+                              <span className="text-xs text-emerald-700">-{formatCurrency(selectedDeduct)} {getDiscountLabel(order)}</span>
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        <span>{formatCurrency(order.total)}</span>
+                      )}
+                    </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-col gap-1">
                         <Badge variant="outline">{order.paymentMethod}</Badge>
@@ -383,22 +415,42 @@ export default function Orders() {
                     </>
                   )}
                   <div className="space-y-1 pt-2 border-t">
+                    {detailOrder.discountAmount > 0 && (
+                      <>
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>Original Amount</span>
+                          <span>{formatCurrency(Number(detailOrder.total || 0) + Number(detailOrder.discountAmount || 0))}</span>
+                        </div>
+                        {detailOrder.membershipDiscountAmount > 0 && (
+                          <div className="flex justify-between text-sm text-emerald-700">
+                            <span>Member discount</span>
+                            <span>-{formatCurrency(detailOrder.membershipDiscountAmount)}</span>
+                          </div>
+                        )}
+                        {detailOrder.promotionDiscountAmount > 0 && (
+                          <div className="flex justify-between text-sm text-emerald-700">
+                            <span>Promotion discount</span>
+                            <span>-{formatCurrency(detailOrder.promotionDiscountAmount)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
                     <div className="flex justify-between font-semibold pt-2 border-t">
                       <span>Total Amount</span>
-                      <span>PHP {Number(detailOrder.total || 0).toLocaleString()}</span>
+                      <span>{formatCurrency(detailOrder.total)}</span>
                     </div>
                   </div>
                 </div>
               </div>
               <div className="flex gap-2">
                 <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger id="order-status-select-trigger" className="flex-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Pending">Pending</SelectItem>
                     <SelectItem value="Confirmed">Confirmed</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="Completed" disabled={!canCompleteOrder}>Completed</SelectItem>
                     <SelectItem value="Cancelled">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>

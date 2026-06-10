@@ -22,6 +22,7 @@ import {
 import { Input } from "../../components/ui/input.jsx";
 import { Label } from "../../components/ui/label.jsx";
 import { Textarea } from "../../components/ui/textarea.jsx";
+import PaymentDetailsModal from "../../components/ui/PaymentDetailsModal.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useCart } from "../../context/CartContext.jsx";
 import { ordersAPI } from "../../utils/api.js";
@@ -29,13 +30,11 @@ import { ordersAPI } from "../../utils/api.js";
 const paymentOptions = [
   { value: "gcash", label: "GCash" },
   { value: "bank_transfer", label: "Bank Transfer" },
-  { value: "cod", label: "Cash on Delivery" },
 ];
 
 const paymentMethodMap = {
   gcash: "GCash",
   bank_transfer: "Bank Transfer",
-  cod: "Cash on Delivery",
 };
 
 const isBackendProductId = (id) => !String(id).startsWith("fallback-");
@@ -47,7 +46,7 @@ const getPackageItemName = (item) => getPackageProduct(item)?.productName || ite
 const getPackageItemPrice = (item) => Number(getPackageProduct(item)?.srp ?? getPackageProduct(item)?.price ?? 0);
 const getPackageItemStock = (item) => Number(getPackageProduct(item)?.stockLevel ?? 0);
 
-export default function ClientOrderForm({ selectedPackage }) {
+export default function ClientOrderForm({ selectedPackage, onCancelPackage }) {
   const { user } = useAuth();
   const { cart, clearCart, updateQuantity, removeFromCart } = useCart();
   const [selectedIds, setSelectedIds] = useState(() => cart.map((item) => item._id));
@@ -58,13 +57,17 @@ export default function ClientOrderForm({ selectedPackage }) {
   const [paymentMethod, setPaymentMethod] = useState(paymentOptions[0].value);
   const [referenceNumber, setReferenceNumber] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const handlePaymentMethodChange = (value) => {
     setPaymentMethod(value);
-    if (value === "cod") {
-      setReferenceNumber("");
-    }
+  };
+
+  const openPaymentModal = () => setIsPaymentModalOpen(true);
+  const closePaymentModal = () => setIsPaymentModalOpen(false);
+  const handlePaymentModalConfirm = () => {
+    closePaymentModal();
   };
 
   const selectedCartItems = cart.filter((item) => selectedIds.includes(item._id));
@@ -91,6 +94,20 @@ export default function ClientOrderForm({ selectedPackage }) {
     return selectedCartItems.reduce((total, item) => {
       return total + (item.price || 0) * item.quantity;
     }, 0);
+  };
+
+  const calculateCartBaseTotal = () => selectedCartItems.reduce((total, item) => {
+    const basePrice = Number(item.srp ?? item.price ?? 0);
+    return total + basePrice * item.quantity;
+  }, 0);
+
+  const calculateMembershipDiscount = () => {
+    if (selectedPackage) return 0;
+    if (user?.memberRole !== "Member") return 0;
+
+    const baseTotal = calculateCartBaseTotal();
+    const discountedTotal = calculateTotal();
+    return Math.max(0, baseTotal - discountedTotal);
   };
 
   const handleToggleSelect = (productId) => {
@@ -217,7 +234,20 @@ export default function ClientOrderForm({ selectedPackage }) {
                   </CardTitle>
                   <CardDescription>You have selected a package deal</CardDescription>
                 </div>
-                <Badge className="bg-blue-600">Package Deal</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-blue-600">Package Deal</Badge>
+                  {onCancelPackage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onCancelPackage}
+                      className="text-red-600 border-red-300 hover:bg-red-50"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -550,22 +580,34 @@ export default function ClientOrderForm({ selectedPackage }) {
             </div>
 
             {(paymentMethod === "gcash" || paymentMethod === "bank_transfer") && (
-              <div className="space-y-2">
-                <Label htmlFor="referenceNumber">
-                  Reference Number *
-                </Label>
-                <Input
-                  id="referenceNumber"
-                  placeholder={paymentMethod === "gcash"
-                    ? "Enter the GCash reference number"
-                    : "Enter the bank transfer reference number"}
-                  value={referenceNumber}
-                  onChange={(event) => setReferenceNumber(event.target.value)}
-                  required
-                />
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between"
+                  onClick={openPaymentModal}
+                >
+                  View {paymentMethod === "gcash" ? "GCash" : "Bank Transfer"} payment details
+                </Button>
+                <p className="text-sm text-gray-600">
+                  After sending payment, add the reference number in the modal and submit your order.
+                </p>
+                {referenceNumber && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+                    <span className="font-medium">Reference Number:</span> {referenceNumber}
+                  </div>
+                )}
               </div>
             )}
 
+            <PaymentDetailsModal
+              open={isPaymentModalOpen}
+              onClose={closePaymentModal}
+              paymentMethod={paymentMethod}
+              referenceNumber={referenceNumber}
+              onReferenceNumberChange={setReferenceNumber}
+              onConfirm={handlePaymentModalConfirm}
+            />
 
             <Alert className="bg-amber-50 border-amber-200 flex gap-3">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
@@ -589,6 +631,12 @@ export default function ClientOrderForm({ selectedPackage }) {
               <span>Delivery Fee:</span>
               <span>To be collected by courier</span>
             </div>
+            {user?.memberRole === "Member" && !selectedPackage && calculateMembershipDiscount() > 0 && (
+              <div className="flex justify-between text-sm text-emerald-700">
+                <span>Member discount:</span>
+                <span>-PHP {calculateMembershipDiscount().toLocaleString()}</span>
+              </div>
+            )}
             <div className="border-t pt-4 flex justify-between text-2xl font-bold">
               <span>Total:</span>
               <span className="text-blue-600">PHP {calculateTotal().toLocaleString()}</span>

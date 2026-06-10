@@ -25,7 +25,7 @@ const formatMoney = (value) => `PHP ${Number(value || 0).toLocaleString()}`;
 const formatChange = (value) => {
   const numberValue = Number(value || 0);
   const prefix = numberValue > 0 ? "+" : "";
-  return `${prefix}${numberValue}% vs previous week`;
+  return `${prefix}${numberValue}% vs previous 7-day period`;
 };
 
 export default function AdminDashboard() {
@@ -39,7 +39,7 @@ export default function AdminDashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        const response = await reportsAPI.getOverview({ period: "weekly", offset: 0 });
+        const response = await reportsAPI.getOverview({ period: "last7", offset: 0 });
         if (!active) return;
         setReport(response.data.data);
         setLastUpdated(new Date());
@@ -87,7 +87,7 @@ export default function AdminDashboard() {
     {
       title: "Appointments",
       value: Number(allTime.appointments || 0).toLocaleString(),
-      change: `${Number(metrics.appointments || 0).toLocaleString()} this week`,
+      change: `${Number(metrics.appointments || 0).toLocaleString()} last 7 days`,
       trend: "up",
       icon: Calendar,
       color: "text-green-600",
@@ -127,7 +127,7 @@ export default function AdminDashboard() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Dashboard Overview</h1>
-          <p className="text-gray-600">Live database snapshot for {report?.period?.label || "this week"}.</p>
+          <p className="text-gray-600">Live database snapshot for {report?.period?.label || "last 7 days"}.</p>
         </div>
         <p className="text-xs text-gray-500 font-medium">
           {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Waiting for first update"}
@@ -180,7 +180,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Revenue This Week</CardTitle>
+            <CardTitle>Revenue Last 7 Days</CardTitle>
           </CardHeader>
           <CardContent>
             <SimpleLineChart data={revenueTrend} xKey="label" yKey="revenue" />
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Orders This Week</CardTitle>
+            <CardTitle>Orders Last 7 Days</CardTitle>
           </CardHeader>
           <CardContent>
             <SimpleBarChart data={ordersTrend} xKey="label" yKey="orders" />

@@ -32,11 +32,8 @@ import {
 const paymentMethodAliases = new Map([
     ["gcash", "GCash"],
     ["bank_transfer", "Bank Transfer"],
-    ["cod", "Cash on Delivery"],
-    ["cash on delivery", "Cash on Delivery"],
-    ["cash_on_delivery", "Cash on Delivery"],
 ]);
-const paymentMethods = new Set(["GCash", "Cash on Delivery", "Bank Transfer"]);
+const paymentMethods = new Set(["GCash", "Bank Transfer"]);
 
 const normalizePaymentMethod = (value) => {
     const rawValue = String(value || "").trim();
@@ -347,7 +344,12 @@ export const createOrder = async (req, res) => {
             });
         }
 
-        const customer = await getAuthenticatedCustomer(req.user);
+        let customer = await getAuthenticatedCustomer(req.user);
+        // If the request isn't authenticated but the email matches an existing customer,
+        // use that customer so membership discounts are applied server-side.
+        if (!customer) {
+            customer = await Customer.findOne({ "contactInfo.email": email });
+        }
         const orderCustomerId = customer?._id || null;
         const activeMembership = getActiveMembership(customer);
 
@@ -379,6 +381,8 @@ export const createOrder = async (req, res) => {
 
         let subtotal = 0;
         const orderLines = [];
+        const membershipDiscountRate = activeMembership?.discountRate || 0;
+        const applyMembershipDiscount = Boolean(membershipDiscountRate) && !packageDeal;
 
         for (const [productId, quantity] of requestedItems.entries()) {
             const product = productMap.get(productId);
@@ -390,13 +394,31 @@ export const createOrder = async (req, res) => {
                 });
             }
 
-            const unitPrice = roundMoney(product.srp ?? product.price);
+            const originalUnitPrice = roundMoney(product.srp ?? product.price);
+            const unitPrice = applyMembershipDiscount
+                ? roundMoney(originalUnitPrice * (1 - membershipDiscountRate))
+                : originalUnitPrice;
+            const lineDiscount = applyMembershipDiscount
+                ? roundMoney((originalUnitPrice - unitPrice) * quantity)
+                : 0;
             const lineSubtotal = roundMoney(unitPrice * quantity);
+
             subtotal += lineSubtotal;
-            orderLines.push({ product, productId, quantity, unitPrice, lineSubtotal });
+            orderLines.push({
+                product,
+                productId,
+                quantity,
+                unitPrice,
+                originalUnitPrice,
+                lineDiscount,
+                lineSubtotal,
+            });
         }
 
         subtotal = roundMoney(subtotal);
+        const membershipDiscountAmount = applyMembershipDiscount
+            ? roundMoney(orderLines.reduce((sum, line) => sum + line.lineDiscount, 0))
+            : 0;
         const packageBaseTotal = packageDeal ? roundMoney(packageDeal.price) : subtotal;
         
         // Set orderType based on packageDeal
@@ -453,8 +475,8 @@ export const createOrder = async (req, res) => {
             referenceNumber,
             orderType: orderTypeParam || orderType,
             total,
-            discountAmount: promotionResult.discountAmount,
-            membershipDiscountAmount: 0,
+            discountAmount: roundMoney(membershipDiscountAmount + promotionResult.discountAmount),
+            membershipDiscountAmount,
             promotionDiscountAmount: promotionResult.discountAmount,
             promotionCode,
             appliedPromotions: promotionResult.appliedPromotions,
@@ -615,11 +637,29 @@ export const updateOrderStatus = async (req, res) => {
             await restoreStockForOrder(order._id);
         }
 
-        order.status = status;
-        order.updatedAt = new Date();
-        await order.save();
+        if (status === "Completed" && order.status !== "Confirmed") {
+            return res.status(400).json({
+                success: false,
+                message: "Order must be confirmed before it can be completed",
+            });
+        }
 
-        if (status === "Completed" && previousStatus !== "Completed" && order.customerId) {
+        const updatedFields = {
+            status,
+            updatedAt: new Date(),
+        };
+
+        if (status === "Confirmed") {
+            updatedFields.paymentStatus = "paid";
+        }
+
+        const updatedOrderDoc = await Order.findByIdAndUpdate(order._id, updatedFields, {
+            new: true,
+        });
+
+        const orderToUse = updatedOrderDoc || order;
+
+        if (status === "Completed" && previousStatus !== "Completed" && orderToUse.customerId) {
             const customer = await Customer.findById(order.customerId);
             const earnedPoints = calculateMembershipPoints({ customer, amount: order.total });
 

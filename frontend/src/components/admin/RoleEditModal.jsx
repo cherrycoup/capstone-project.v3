@@ -5,10 +5,33 @@ import './modal.css';
 
 const CUSTOMER_ROLES = ['Guest', 'Member'];
 
+const formatDate = (value) => {
+    if (!value) return 'Not available';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Not available';
+    return date.toLocaleDateString();
+};
+
+const getPredictedExpiryDate = (customer, selectedRole) => {
+    if (selectedRole !== 'Member') return null;
+
+    const currentExpiry = customer?.membership?.expiresAt ? new Date(customer.membership.expiresAt) : null;
+    const now = new Date();
+
+    if (currentExpiry && currentExpiry > now) {
+        return currentExpiry;
+    }
+
+    const joinedAt = customer?.membership?.joinedAt ? new Date(customer.membership.joinedAt) : now;
+    return new Date(joinedAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+};
+
 export default function RoleEditModal({ customer, onClose, onSave }) {
     const [selectedRole, setSelectedRole] = useState(customer?.role || 'Guest');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const isExistingMember = customer?.role === 'Member';
+    const predictedExpiryDate = getPredictedExpiryDate(customer, selectedRole);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -22,7 +45,10 @@ export default function RoleEditModal({ customer, onClose, onSave }) {
             const membershipUpdate = {
                 status: selectedRole === 'Member' ? 'Active' : 'None',
                 tier: selectedRole === 'Member' ? customer?.membership?.tier || 'Silver' : 'Silver',
-                notes: `Role changed from ${customer?.role} to ${selectedRole}`
+                notes: `Role changed from ${customer?.role} to ${selectedRole}`,
+                ...(selectedRole === 'Member' && predictedExpiryDate ? {
+                    expiresAt: predictedExpiryDate.toISOString(),
+                } : {}),
             };
 
             await customersAPI.updateMembership(customer._id, membershipUpdate);
@@ -59,6 +85,21 @@ export default function RoleEditModal({ customer, onClose, onSave }) {
                         </div>
                     </div>
 
+                    <div className="role-summary-card">
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase tracking-wide">Role</p>
+                            <p className="text-lg font-semibold text-slate-900">{selectedRole}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase tracking-wide">Expiry Date</p>
+                            <p className="text-lg font-semibold text-slate-900">
+                                {selectedRole === 'Member'
+                                    ? formatDate(predictedExpiryDate)
+                                    : 'None'}
+                            </p>
+                        </div>
+                    </div>
+
                     {error && (
                         <div className="error-message">
                             {error}
@@ -75,6 +116,7 @@ export default function RoleEditModal({ customer, onClose, onSave }) {
                                         value={role}
                                         checked={selectedRole === role}
                                         onChange={(e) => setSelectedRole(e.target.value)}
+                                        disabled={role === 'Guest' && isExistingMember}
                                     />
                                     <div className="role-option-content">
                                         <span className="role-name">{role}</span>
@@ -88,6 +130,11 @@ export default function RoleEditModal({ customer, onClose, onSave }) {
                                 </label>
                             ))}
                         </div>
+                        {isExistingMember && (
+                            <p className="text-sm text-slate-500 mt-3">
+                                Members cannot be downgraded to Guest through this form. Use the cancel membership action if you need to remove membership.
+                            </p>
+                        )}
 
                         <div className="modal-footer">
                             <button

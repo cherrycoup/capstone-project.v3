@@ -33,7 +33,7 @@ const customerSchema = new mongoose.Schema({
     membership: {
         status: {
             type: String,
-            enum: ["None", "Pending", "Active", "Rejected"],
+            enum: ["None", "Pending", "Active", "Expired", "Suspended", "Rejected"],
             default: "None",
         },
         tier: {

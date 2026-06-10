@@ -87,7 +87,7 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
                                 `Your membership is active and benefits are available`
                             )}
                             {membership.status === 'Approved' && (
-                                'Your membership has been approved! Activate it to enjoy benefits.'
+                                'Your membership has been approved. Activation will be set once your order is completed.'
                             )}
                             {membership.status === 'Rejected' && (
                                 'Your application was not approved. You can submit a new application.'

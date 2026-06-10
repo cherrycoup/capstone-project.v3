@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Clock, Mail, MapPin, Phone, UserRound, Wrench } from "lucide-react";
+import { AlertCircle, Calendar as CalendarIcon, Clock, Mail, MapPin, Phone, UserRound, Wrench } from "lucide-react";
+import { Alert, AlertDescription } from "../../components/ui/alert.jsx";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { Calendar } from "../../components/ui/calendar.jsx";
@@ -30,6 +31,9 @@ export default function Appointments() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState("all");
+  const [blockedDates, setBlockedDates] = useState([]);
+  const [fullyBookedDates, setFullyBookedDates] = useState([]);
 
   async function fetchAppointments() {
     try {
@@ -45,6 +49,19 @@ export default function Appointments() {
 
   useEffect(() => {
     fetchAppointments();
+    // fetch blocked dates and fully booked dates for calendar
+    (async () => {
+      try {
+        const [blockedRes, bookedRes] = await Promise.all([
+          appointmentsAPI.getBlockedDates(),
+          appointmentsAPI.getFullyBookedDates()
+        ]);
+        setBlockedDates(blockedRes.data.data || []);
+        setFullyBookedDates(bookedRes.data.data || []);
+      } catch (err) {
+        console.error('Failed to load date information', err);
+      }
+    })();
   }, []);
 
   const handleUpdateStatus = async () => {
@@ -74,11 +91,79 @@ export default function Appointments() {
   const getDisplayTime = (appointment) => appointment.timeSlot || appointment.time || "N/A";
   const getAppointmentId = (appointment) => `APT-${appointment._id?.slice(-6).toUpperCase() || "000000"}`;
 
-  const today = new Date().toISOString().split("T")[0];
-  const todayAppointments = appointmentsList.filter((appointment) => getDateValue(appointment) === today);
-  const upcomingAppointments = appointmentsList.filter(
-    (appointment) => appointment.date && new Date(appointment.date) > new Date() && appointment.status !== "Cancelled"
+  const formatDate = (value) =>
+    value.toLocaleDateString(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+  // Get all appointment dates for calendar display
+  const appointmentDates = appointmentsList
+    .filter(apt => apt.date && (apt.status === "Scheduled" || apt.status === "Confirmed"))
+    .map(apt => apt.date.split("T")[0]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sortedAppointments = [...appointmentsList].sort((a, b) => {
+    const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aCreated !== bCreated) {
+      return bCreated - aCreated;
+    }
+
+    const aDate = a.date ? new Date(a.date).getTime() : 0;
+    const bDate = b.date ? new Date(b.date).getTime() : 0;
+    if (aDate !== bDate) {
+      return bDate - aDate;
+    }
+
+    const aTime = a.timeSlot || a.time || "";
+    const bTime = b.timeSlot || b.time || "";
+    return bTime.localeCompare(aTime);
+  });
+
+  const upcomingAppointments = sortedAppointments.filter((appointment) => {
+    const appointmentDate = appointment.date ? new Date(appointment.date) : null;
+    return (
+      appointmentDate &&
+      appointmentDate >= today &&
+      appointment.status !== "Cancelled"
+    );
+  });
+
+  const todayAppointments = sortedAppointments.filter((appointment) => {
+    const appointmentDate = appointment.date ? new Date(appointment.date) : null;
+    return (
+      appointmentDate &&
+      appointmentDate.getFullYear() === today.getFullYear() &&
+      appointmentDate.getMonth() === today.getMonth() &&
+      appointmentDate.getDate() === today.getDate()
+    );
+  });
+
+  const todayReminderAppointments = todayAppointments.filter(
+    (appointment) => appointment.status === "Scheduled"
   );
+
+  const filteredAppointments = sortedAppointments.filter((appointment) => {
+    if (viewMode === "upcoming") {
+      return upcomingAppointments.some((item) => item._id === appointment._id);
+    }
+    if (viewMode === "today") {
+      return todayAppointments.some((item) => item._id === appointment._id);
+    }
+    return true;
+  });
+
+  const listHeading =
+    viewMode === "today"
+      ? "Today's Appointments"
+      : viewMode === "upcoming"
+      ? "Upcoming Appointments"
+      : "All Appointments";
 
   if (loading) {
     return <div className="p-6">Loading appointments...</div>;
@@ -98,28 +183,125 @@ export default function Appointments() {
         <Stat title="Completed" value={appointmentsList.filter((a) => a.status === "Completed").length} />
       </div>
 
+      {todayReminderAppointments.length > 0 && (
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
+          <p className="text-sm font-semibold">Reminder</p>
+          <p className="mt-1 text-base">
+            You have {todayReminderAppointments.length} unconfirmed appointment{todayReminderAppointments.length > 1 ? "s" : ""} today.
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <span className="text-sm font-semibold text-slate-700">View:</span>
+        {[
+          { key: "all", label: "All appointments" },
+          { key: "today", label: "Today" },
+          { key: "upcoming", label: "Upcoming" },
+        ].map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            className={`rounded-full px-4 py-2 text-sm transition ${
+              viewMode === option.key
+                ? "bg-slate-950 text-white"
+                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+            onClick={() => setViewMode(option.key)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-1 border border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle>Calendar</CardTitle>
+            <CardTitle>Mark Dates Unavailable</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="mx-auto rounded-2xl border border-gray-300 bg-gray-2cd00 text-center"
-            />
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-slate-600">Select a date to block or unblock it from booking</p>
+              <div className="rounded-3xl bg-gray-50 p-3 flex justify-center">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  className="border-gray-100"
+                  modifiers={{
+                    blocked: (date) => {
+                      const dateStr = date.toISOString().slice(0, 10);
+                      return blockedDates.includes(dateStr);
+                    },
+                    appointment: (date) => {
+                      const dateStr = date.toISOString().slice(0, 10);
+                      return appointmentDates.includes(dateStr) && !blockedDates.includes(dateStr);
+                    }
+                  }}
+                  modifiersClassNames={{
+                    blocked: "bg-red-50 text-red-700 line-through opacity-80",
+                    appointment: "bg-green-50 text-green-700 font-semibold"
+                  }}
+                />
+              </div>
+              {selectedDate && (
+                <p className="text-sm text-slate-600 mt-2">
+                  Selected: <strong>{formatDate(selectedDate)}</strong>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2 pt-4 border-t border-slate-200">
+              {selectedDate && (
+                <>
+                  {blockedDates.includes(selectedDate.toISOString().slice(0, 10)) ? (
+                    <Button
+                      onClick={async () => {
+                        const dateKey = selectedDate.toISOString().slice(0, 10);
+                        try {
+                          await appointmentsAPI.unblockDate(dateKey);
+                          setBlockedDates((p) => (p || []).filter((d) => d !== dateKey));
+                          toast.success('Date unblocked successfully');
+                        } catch (err) {
+                          console.error(err);
+                          toast.error('Failed to unblock date');
+                        }
+                      }}
+                      className="w-full h-10 rounded-full bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Unblock Date
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={async () => {
+                        const dateKey = selectedDate.toISOString().slice(0, 10);
+                        try {
+                          await appointmentsAPI.blockDate(dateKey, 'Blocked by admin');
+                          setBlockedDates((p) => Array.from(new Set([...(p || []), dateKey])));
+                          toast.success('Date blocked successfully');
+                        } catch (err) {
+                          console.error(err);
+                          toast.error('Failed to block date');
+                        }
+                      }}
+                      className="w-full h-10 rounded-full bg-red-600 text-white hover:bg-red-700"
+                    >
+                      Block Date
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>All Appointments</CardTitle>
+            <CardTitle>{listHeading}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {appointmentsList.map((appointment) => (
+              {filteredAppointments.map((appointment) => (
                 <button
                   key={appointment._id}
                   type="button"
@@ -158,8 +340,8 @@ export default function Appointments() {
                   </div>
                 </button>
               ))}
-              {appointmentsList.length === 0 && (
-                <div className="py-8 text-center text-gray-500">No appointments found.</div>
+              {filteredAppointments.length === 0 && (
+                <div className="py-8 text-center text-gray-500">No appointments found for this view.</div>
               )}
             </div>
           </CardContent>

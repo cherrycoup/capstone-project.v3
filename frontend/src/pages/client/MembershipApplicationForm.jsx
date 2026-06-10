@@ -7,20 +7,19 @@ import { Button } from "../../components/ui/button.jsx";
 import { Input } from "../../components/ui/input.jsx";
 import { Label } from "../../components/ui/label.jsx";
 import { Textarea } from "../../components/ui/textarea.jsx";
+import PaymentDetailsModal from "../../components/ui/PaymentDetailsModal.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { membershipAPI, packagesAPI } from "../../utils/api.js";
-import logoSrc from "../../assets/logo (1).webp";
+import logoSrc from "../../assets/logo.webp";
 
 const paymentOptions = [
   { value: "gcash", label: "GCash" },
   { value: "bank_transfer", label: "Bank Transfer" },
-  { value: "cod", label: "Cash on Delivery" },
 ];
 
 const paymentMethodMap = {
   gcash: "GCash",
   bank_transfer: "Bank Transfer",
-  cod: "Cash on Delivery",
 };
 
 export default function MembershipApplicationForm() {
@@ -40,6 +39,7 @@ export default function MembershipApplicationForm() {
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(paymentOptions[0].value);
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -80,9 +80,12 @@ export default function MembershipApplicationForm() {
 
   const handlePaymentMethodChange = (value) => {
     setPaymentMethod(value);
-    if (value === "cod") {
-      setReferenceNumber("");
-    }
+  };
+
+  const openPaymentModal = () => setIsPaymentModalOpen(true);
+  const closePaymentModal = () => setIsPaymentModalOpen(false);
+  const handlePaymentModalConfirm = () => {
+    closePaymentModal();
   };
 
   const validateForm = () => {
@@ -155,8 +158,8 @@ export default function MembershipApplicationForm() {
     );
   }
 
-  // If user already has active or pending membership, show View Status button
-  if (existingMembership && (existingMembership.status === 'Active' || existingMembership.status === 'Pending')) {
+  // If user already has a membership application or active membership, show View Status button
+  if (existingMembership && existingMembership.status && existingMembership.status !== 'None') {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
         {/* Navigation Bar */}
@@ -432,27 +435,39 @@ export default function MembershipApplicationForm() {
               </div>
 
               {(paymentMethod === "gcash" || paymentMethod === "bank_transfer") && (
-                <div>
-                  <Label htmlFor="referenceNumber" className="text-gray-700 font-medium">
-                    Reference Number *
-                  </Label>
-                  <Input
-                    id="referenceNumber"
-                    placeholder={paymentMethod === "gcash"
-                      ? "Enter your GCash reference number"
-                      : "Enter the bank transfer reference number"}
-                    value={referenceNumber}
-                    onChange={(event) => setReferenceNumber(event.target.value)}
-                    required
-                    className="mt-2"
-                  />
+                <div className="space-y-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between"
+                    onClick={openPaymentModal}
+                  >
+                    View {paymentMethod === "gcash" ? "GCash" : "Bank Transfer"} payment details
+                  </Button>
+                  <p className="text-sm text-gray-600">
+                    After sending payment, add the reference number in the modal and submit your application.
+                  </p>
+                  {referenceNumber && (
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+                      <span className="font-medium">Reference Number:</span> {referenceNumber}
+                    </div>
+                  )}
                 </div>
               )}
+
+              <PaymentDetailsModal
+                open={isPaymentModalOpen}
+                onClose={closePaymentModal}
+                paymentMethod={paymentMethod}
+                referenceNumber={referenceNumber}
+                onReferenceNumberChange={setReferenceNumber}
+                onConfirm={handlePaymentModalConfirm}
+              />
 
               <Alert className="bg-blue-50 border-blue-200 mt-4">
                 <AlertCircle className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800 text-sm">
-                  If your selected payment method generates a checkout URL, you will be redirected to complete payment immediately after submitting your application.
+                  Activation will be set once your order is completed.
                 </AlertDescription>
               </Alert>
             </div>

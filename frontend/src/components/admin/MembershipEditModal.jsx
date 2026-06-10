@@ -4,9 +4,10 @@ import { customersAPI } from '../../utils/api';
 import './modal.css';
 
 const MEMBERSHIP_TIERS = ['Silver', 'Gold', 'Platinum'];
-const MEMBERSHIP_STATUSES = ['None', 'Pending', 'Active', 'Suspended'];
+const MEMBERSHIP_STATUSES = ['None', 'Pending', 'Active', 'Expired', 'Suspended'];
 
 export default function MembershipEditModal({ customer, onClose, onSave }) {
+    const isExistingMember = customer?.role === 'Member';
     const [formData, setFormData] = useState({
         status: customer?.membership?.status || 'None',
         tier: customer?.membership?.tier || 'Silver',
@@ -88,9 +89,20 @@ export default function MembershipEditModal({ customer, onClose, onSave }) {
                                 required
                             >
                                 {MEMBERSHIP_STATUSES.map(status => (
-                                    <option key={status} value={status}>{status}</option>
+                                    <option
+                                        key={status}
+                                        value={status}
+                                        disabled={status === 'None' && isExistingMember}
+                                    >
+                                        {status}
+                                    </option>
                                 ))}
                             </select>
+                            {isExistingMember && (
+                                <p className="text-xs text-slate-500 mt-2">
+                                    Guests cannot be assigned once this customer has become a Member.
+                                </p>
+                            )}
                         </div>
 
                         <div className="form-group">

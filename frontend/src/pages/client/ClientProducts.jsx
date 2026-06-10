@@ -103,14 +103,6 @@ export default function ClientProducts() {
     
     if (success) {
       toast.success(`${product.productName || product.name} added to cart!`);
-      // Navigate to order section
-      navigate('/dashboard');
-      // The ClientDashboard will need to handle setting the active tab to "order"
-      // We'll use a small delay to ensure the navigation completes
-      setTimeout(() => {
-        // This will be handled by the ClientDashboard component
-        window.location.hash = '#order';
-      }, 100);
     } else {
       toast.error("The selected quantity is no longer available.");
     }
@@ -237,7 +229,7 @@ export default function ClientProducts() {
                     ) : (
                       <div className="text-2xl font-bold text-slate-900">PHP {priceLabel}</div>
                     )}
-                    <div className={`mt-1 text-xs ${stockLabel <= 0 ? "text-rose-600" : lowStock ? "text-amber-600" : "text-emerald-600"}`}>
+                    <div className={`mt-1 text-xs ${stockLabel <= 0 ? "text-rose-600" : lowStock ? "text-rose-600" : "text-emerald-600"}`}>
                       {stockLabel <= 0 ? "Out of stock" : lowStock ? `Only ${stockLabel} left` : `${stockLabel} in stock`}
                     </div>
                   </div>

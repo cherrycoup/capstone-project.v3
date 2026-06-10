@@ -35,7 +35,10 @@ export default function MembershipStatus() {
 
   const membership = membershipData?.membership || null;
   const status = membership?.status || "None";
-  const date = status === "None" ? null : membership?.joinedAt || membership?.approvedAt || membership?.expiresAt || membershipData?.applicationSubmittedAt;
+  const activationDate = membership?.joinedAt || membership?.approvedAt || null;
+  const expiryDate = membership?.expiresAt || null;
+  const isMember = Boolean(activationDate || expiryDate) && status !== "None";
+  const defaultDate = status === "None" ? null : membershipData?.applicationSubmittedAt || activationDate || expiryDate;
   const packageName = membershipData?.selectedPackageDeal?.name || membershipData?.entryPackage || "N/A";
   const paymentMethod = membershipData?.membershipPaymentInfo?.paymentMethod || "N/A";
   const paymentReference = membershipData?.membershipPaymentInfo?.referenceNumber || "N/A";
@@ -59,10 +62,23 @@ export default function MembershipStatus() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
                     <p className="mt-2 text-lg font-bold text-slate-900">{status}</p>
                   </div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Date</p>
-                    <p className="mt-2 text-lg font-bold text-slate-900">{formatDate(date)}</p>
-                  </div>
+                  {isMember ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Activation Date</p>
+                        <p className="mt-2 text-lg font-bold text-slate-900">{formatDate(activationDate)}</p>
+                      </div>
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Expiry Date</p>
+                        <p className="mt-2 text-lg font-bold text-slate-900">{formatDate(expiryDate)}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Date</p>
+                      <p className="mt-2 text-lg font-bold text-slate-900">{formatDate(defaultDate)}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">

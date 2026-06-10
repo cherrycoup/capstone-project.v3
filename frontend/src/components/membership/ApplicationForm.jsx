@@ -367,7 +367,7 @@ export default function ApplicationForm({ selectedTier, onSubmit, isLoading = fa
                     <CardContent className="pt-6">
                         <p className="text-sm text-blue-900">
                             <strong>What happens next?</strong> Your application will be reviewed by our team within 24-48 hours.
-                            You'll receive an email notification about the status of your membership application.
+                            Activation will be set once your order is completed.
                         </p>
                     </CardContent>
                 </Card>

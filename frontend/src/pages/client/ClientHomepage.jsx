@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import logoSrc from '../../assets/logo (1).webp';
+import logoSrc from '../../assets/logo.webp';
 import { ArrowRight, Zap, Lightbulb, Wrench, Gauge, Heart, Flame, Package, Percent, ImageIcon, ShoppingBag, Mail, MapPin, Phone, Clock } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
@@ -12,24 +12,21 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
-import { packagesAPI, productsAPI, promotionsAPI } from '../../utils/api';
+import { packagesAPI, productsAPI } from '../../utils/api';
 
 export default function ClientHomepage() {
   const { user } = useAuth();
-  const [flashDeals, setFlashDeals] = useState([]);
   const [packageDeals, setPackageDeals] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
 
   useEffect(() => {
     const fetchOffers = async () => {
       try {
-        const [promotionsResponse, packagesResponse, productsResponse] = await Promise.all([
-          promotionsAPI.getAll().catch(() => ({ data: { data: [] } })),
+        const [packagesResponse, productsResponse] = await Promise.all([
           packagesAPI.getAll().catch(() => ({ data: { data: [] } })),
           productsAPI.getAll({ limit: 4 }).catch(() => ({ data: { data: [] } })),
         ]);
 
-        setFlashDeals((promotionsResponse.data.data || []).slice(0, 3));
         setPackageDeals((packagesResponse.data.data || []).slice(0, 3));
         setFeaturedProducts(productsResponse.data.data || []);
       } catch (error) {
@@ -130,7 +127,7 @@ export default function ClientHomepage() {
         </div>
       </section>
 
-      <OfferPreview flashDeals={flashDeals} packageDeals={packageDeals} user={user} />
+      <OfferPreview packageDeals={packageDeals} user={user} />
 
       <ProductsPreview products={featuredProducts} />
 
@@ -349,7 +346,7 @@ function ProductsPreview({ products }) {
   );
 }
 
-function OfferPreview({ flashDeals, packageDeals, user }) {
+function OfferPreview({ packageDeals, user }) {
   return (
     <section className="py-16 px-4 bg-white border-y border-gray-100">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -361,7 +358,7 @@ function OfferPreview({ flashDeals, packageDeals, user }) {
             </div>
             <h2 className="mt-4 text-3xl font-bold text-gray-900">Package Deals & Package Savings</h2>
             <p className="mt-2 max-w-2xl text-gray-600">
-              Sign up to order faster, track purchases, and apply for member discounts on selected deals.
+              Sign up to order faster, track purchases, and receive membership discounts on package deals.
             </p>
           </div>
           <Link to={user ? "/dashboard" : "/signup"}>
@@ -372,39 +369,7 @@ function OfferPreview({ flashDeals, packageDeals, user }) {
           </Link>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <Card className="border-orange-100 bg-orange-50/40">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Flame className="h-5 w-5 text-orange-600" />
-                Package Deals
-              </CardTitle>
-              <CardDescription>Promo codes and automatic discounts currently available</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {flashDeals.length > 0 ? flashDeals.map((deal) => (
-                <div key={deal._id} className="rounded-lg bg-white p-4 shadow-sm">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-gray-900">{deal.name}</p>
-                      <p className="mt-1 text-sm text-gray-600">{deal.description || "Limited-time savings for eligible orders."}</p>
-                    </div>
-                    <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">
-                      {deal.type === "percentage" ? `${deal.value}% off` : `PHP ${Number(deal.value).toLocaleString()} off`}
-                    </Badge>
-                  </div>
-                  {deal.code && (
-                    <p className="mt-3 text-xs font-bold uppercase tracking-wide text-orange-700">
-                      Use code {deal.code}
-                    </p>
-                  )}
-                </div>
-              )) : (
-                <p className="rounded-lg bg-white p-4 text-sm text-gray-600">New flash deals will appear here when active.</p>
-              )}
-            </CardContent>
-          </Card>
-
+        <div className="grid gap-6 lg:grid-cols-1">
           <div className="grid gap-4 md:grid-cols-3">
             {packageDeals.length > 0 ? packageDeals.map((pkg) => (
               <Card key={pkg._id} className="overflow-hidden border-blue-100 shadow-sm">

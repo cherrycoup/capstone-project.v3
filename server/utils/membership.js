@@ -1,25 +1,57 @@
+import Customer from "../models/Customer.js";
+
 export const MEMBERSHIP_TIERS = {
-    Silver: {
-        discountRate: 0.05,
+    Prime: {
+        discountRate: 0.4,
         pointsPerPeso: 0.01,
     },
-    Gold: {
-        discountRate: 0.1,
-        pointsPerPeso: 0.015,
+    Stater: {
+        discountRate: 0.4,
+        pointsPerPeso: 0.01,
     },
-    Platinum: {
-        discountRate: 0.15,
-        pointsPerPeso: 0.02,
+    Bronze: {
+        discountRate: 0.4,
+        pointsPerPeso: 0.01,
     },
 };
 
 export const MEMBERSHIP_STATUSES = ["None", "Pending", "Active", "Expired", "Suspended", "Rejected"];
 
-export const getTierBenefits = (tier = "Silver") =>
-    MEMBERSHIP_TIERS[tier] || MEMBERSHIP_TIERS.Silver;
+export const getTierBenefits = (tier = "Prime") =>
+    MEMBERSHIP_TIERS[tier] || MEMBERSHIP_TIERS.Prime;
+
+export const DAY_MS = 24 * 60 * 60 * 1000;
+
+export const getExpiryDate = (date, days = 365) => {
+    const startDate = new Date(date);
+    return new Date(startDate.getTime() + days * DAY_MS);
+};
+
+export const isMembershipExpired = (membership) => {
+    if (!membership || !membership.expiresAt) return false;
+    const expiresAt = new Date(membership.expiresAt);
+    return !Number.isNaN(expiresAt.getTime()) && expiresAt <= new Date();
+};
+
+export const expireActiveMemberships = async () => {
+    const now = new Date();
+    return Customer.updateMany(
+        {
+            'membership.status': 'Active',
+            'membership.expiresAt': { $lt: now },
+        },
+        {
+            $set: {
+                'membership.status': 'Expired',
+                role: 'Guest',
+                updatedAt: new Date(),
+            },
+        }
+    );
+};
 
 export const getActiveMembership = (customer) => {
-    if (!customer || customer.role !== "Member") {
+    if (!customer) {
         return null;
     }
 
@@ -32,9 +64,10 @@ export const getActiveMembership = (customer) => {
         return null;
     }
 
+    const tier = membership.tier || "Prime";
     return {
-        tier: membership.tier || "Silver",
-        ...getTierBenefits(membership.tier),
+        tier,
+        ...getTierBenefits(tier),
     };
 };
 

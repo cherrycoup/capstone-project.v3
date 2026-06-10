@@ -36,13 +36,6 @@ const TIME_SLOTS = [
 
 const SERVICES = ["Consultation", "Installation", "Maintenance", "Repair", "Inspection"];
 
-const UNAVAILABLE_DATES = [
-  new Date(2026, 0, 15),
-  new Date(2026, 0, 20),
-  new Date(2026, 0, 25),
-  new Date(2026, 1, 1),
-];
-
 const isSameCalendarDay = (firstDate, secondDate) =>
   firstDate.getFullYear() === secondDate.getFullYear() &&
   firstDate.getMonth() === secondDate.getMonth() &&
@@ -67,9 +60,12 @@ export default function ClientAppointments() {
   const [notes, setNotes] = useState("");
   const [availableSlots, setAvailableSlots] = useState(TIME_SLOTS);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [unavailableDates, setUnavailableDates] = useState([]);
+  const [blockedDates, setBlockedDates] = useState([]);
 
   const handleDateSelect = (nextDate) => {
     setDate(nextDate);
+    setTimeSlot("");
     if (!nextDate) {
       setAvailableSlots(TIME_SLOTS);
     }
@@ -97,6 +93,26 @@ export default function ClientAppointments() {
     fetchSlots();
   }, [date]);
 
+  useEffect(() => {
+    const fetchBlockedAndBookedDates = async () => {
+      try {
+        const [blockedRes, bookedRes] = await Promise.all([
+          appointmentsAPI.getBlockedDates(),
+          appointmentsAPI.getFullyBookedDates()
+        ]);
+        const blocked = (blockedRes.data.data || []);
+        const booked = (bookedRes.data.data || []).map((dateValue) => `${dateValue}`);
+        
+        setBlockedDates(blocked);
+        setUnavailableDates([...blocked, ...booked]);
+      } catch (error) {
+        console.error("Error loading date information:", error);
+      }
+    };
+
+    fetchBlockedAndBookedDates();
+  }, []);
+
   const isDateUnavailable = (checkDate) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -105,9 +121,8 @@ export default function ClientAppointments() {
       return true;
     }
 
-    return UNAVAILABLE_DATES.some((unavailableDate) =>
-      isSameCalendarDay(checkDate, unavailableDate)
-    );
+    const checkDateKey = checkDate.toISOString().slice(0, 10);
+    return unavailableDates.includes(checkDateKey);
   };
 
 const handleSubmit = async (event) => {
@@ -179,10 +194,13 @@ const handleSubmit = async (event) => {
                       disabled={isDateUnavailable}
                       className="border-gray-100"
                       modifiers={{
-                        unavailable: UNAVAILABLE_DATES,
+                        unavailable: (date) => {
+                          const checkDateKey = date.toISOString().slice(0, 10);
+                          return unavailableDates.includes(checkDateKey);
+                        }
                       }}
                       modifiersClassNames={{
-                        unavailable: "bg-transparent text-red-400 line-through opacity-70",
+                        unavailable: "bg-red-50 text-red-700 line-through opacity-80",
                       }}
                     />
                   </div>
@@ -201,16 +219,28 @@ const handleSubmit = async (event) => {
 
                 <div className="space-y-2">
                   <Label htmlFor="timeSlot">Time Slot *</Label>
-                  <Select value={timeSlot} onValueChange={setTimeSlot}>
+                  <Select value={timeSlot} onValueChange={(value) => {
+                    if (availableSlots.includes(value)) {
+                      setTimeSlot(value);
+                    }
+                  }}>
                     <SelectTrigger id="timeSlot">
                       <SelectValue placeholder={loadingSlots ? "Loading slots..." : "Select a time slot"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableSlots.map((slot) => (
-                        <SelectItem key={slot} value={slot}>
-                          {slot}
-                        </SelectItem>
-                      ))}
+                      {TIME_SLOTS.map((slot) => {
+                        const slotAvailable = availableSlots.includes(slot);
+                        return (
+                          <SelectItem
+                            key={slot}
+                            value={slot}
+                            disabled={!slotAvailable}
+                            className={slotAvailable ? "" : "text-gray-400 line-through opacity-60"}
+                          >
+                            {slot}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   {date && availableSlots.length === 0 && (

@@ -10,7 +10,7 @@ import {
 
 const validTypes = new Set(["percentage", "fixed_amount"]);
 const validCustomerTypes = new Set(["all", "members", "non_members"]);
-const validTiers = new Set(["Silver", "Gold", "Platinum"]);
+const validTiers = new Set(["Prime", "Stater", "Bronze"]);
 
 const parseDate = (value, fallback = null) => {
     if (!value) {
@@ -84,174 +84,34 @@ const validatePromotionPayload = (payload) => {
 };
 
 export const getPromotions = async (req, res) => {
-    try {
-        const includeInactive = String(req.query.includeInactive || "") === "true" && isStaffRole(req.user?.role);
-        const query = includeInactive ? {} : { isActive: true };
-        const now = new Date();
-        const promotions = await Promotion.find({
-            ...query,
-            ...(includeInactive ? {} : {
-                startsAt: { $lte: now },
-                $or: [{ endsAt: null }, { endsAt: { $gte: now } }],
-            }),
-        }).sort({ priority: 1, createdAt: -1 });
-
-        res.status(200).json({
-            success: true,
-            data: promotions,
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+    // Promotions feature is disabled for this deployment
+    return res.status(200).json({ success: true, data: [] });
 };
 
 export const createPromotion = async (req, res) => {
-    try {
-        const payload = mapPromotionInput(req.body, req.user);
-        const validationMessage = validatePromotionPayload(payload);
-
-        if (validationMessage) {
-            return res.status(400).json({
-                success: false,
-                message: validationMessage,
-            });
-        }
-
-        const promotion = await Promotion.create(payload);
-
-        res.status(201).json({
-            success: true,
-            message: "Promotion created successfully",
-            data: promotion,
-        });
-    } catch (error) {
-        if (error.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: "Promotion name or code already exists",
-            });
-        }
-
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+    // Promotions are not supported; return clear rejection
+    return res.status(400).json({ success: false, message: "Promotions are not supported in this deployment" });
 };
 
 export const updatePromotion = async (req, res) => {
-    try {
-        if (!isValidObjectId(req.params.id)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid promotion ID",
-            });
-        }
-
-        const payload = mapPromotionInput(req.body, req.user);
-        const validationMessage = validatePromotionPayload(payload);
-
-        if (validationMessage) {
-            return res.status(400).json({
-                success: false,
-                message: validationMessage,
-            });
-        }
-
-        const promotion = await Promotion.findByIdAndUpdate(
-            req.params.id,
-            payload,
-            { new: true, runValidators: true }
-        );
-
-        if (!promotion) {
-            return res.status(404).json({
-                success: false,
-                message: "Promotion not found",
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Promotion updated successfully",
-            data: promotion,
-        });
-    } catch (error) {
-        if (error.code === 11000) {
-            return res.status(400).json({
-                success: false,
-                message: "Promotion name or code already exists",
-            });
-        }
-
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+    // Promotions are disabled — do not allow updates
+    return res.status(400).json({ success: false, message: "Promotions are not supported in this deployment" });
 };
 
 export const deletePromotion = async (req, res) => {
-    try {
-        if (!isValidObjectId(req.params.id)) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid promotion ID",
-            });
-        }
-
-        const promotion = await Promotion.findByIdAndDelete(req.params.id);
-        if (!promotion) {
-            return res.status(404).json({
-                success: false,
-                message: "Promotion not found",
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Promotion deleted successfully",
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+    // Deleting promotions is not applicable
+    return res.status(400).json({ success: false, message: "Promotions are not supported in this deployment" });
 };
 
 export const getPromotionStats = async (req, res) => {
-    try {
-        const [activePromotions, redemptions, revenueImpact] = await Promise.all([
-            Promotion.countDocuments({ isActive: true }),
-            PromotionRedemption.countDocuments(),
-            PromotionRedemption.aggregate([
-                {
-                    $group: {
-                        _id: null,
-                        totalDiscounts: { $sum: "$discountAmount" },
-                        affectedRevenue: { $sum: "$orderTotalBeforeDiscount" },
-                    },
-                },
-            ]),
-        ]);
-
-        res.status(200).json({
-            success: true,
-            data: {
-                activePromotions,
-                redemptions,
-                totalDiscounts: revenueImpact[0]?.totalDiscounts || 0,
-                affectedRevenue: revenueImpact[0]?.affectedRevenue || 0,
-            },
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: "Internal server error",
-        });
-    }
+    // Promotions disabled — return empty stats
+    return res.status(200).json({
+        success: true,
+        data: {
+            activePromotions: 0,
+            redemptions: 0,
+            totalDiscounts: 0,
+            affectedRevenue: 0,
+        },
+    });
 };

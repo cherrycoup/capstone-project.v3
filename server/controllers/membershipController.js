@@ -5,6 +5,7 @@ import PackageDeal from "../models/PackageDeal.js";
 import User from "../models/User.js";
 import { cleanString, isValidObjectId } from "../utils/validation.js";
 import { sendMembershipApprovalEmail } from "../utils/emailService.js";
+import { getExpiryDate, expireActiveMemberships } from "../utils/membership.js";
 
 const buildMembershipOrderReference = () => `MEM-${Date.now()}-${Math.floor(Math.random() * 9000) + 1000}`;
 
@@ -131,7 +132,7 @@ export const applyForMembership = async (req, res) => {
                 address: customer.contactInfo.address || '',
                 packageDealId: packageDeal?._id || null,
                 packageName,
-                paymentMethod: paymentMethod || 'Cash on Delivery',
+                paymentMethod: paymentMethod || '',
                 paymentStatus: 'pending',
                 paymentGateway: paymentMethod === 'GCash' ? 'gcash' : paymentMethod === 'Bank Transfer' ? 'bank_transfer' : 'manual',
                 paymentReference: orderReference,
@@ -273,6 +274,7 @@ export const getMyMembershipHistory = async (req, res) => {
  */
 export const getAllApplications = async (req, res) => {
     try {
+        await expireActiveMemberships();
         const { status, tier, search } = req.query;
         const filter = {};
 
@@ -317,6 +319,7 @@ export const getAllApplications = async (req, res) => {
  */
 export const getApplicationById = async (req, res) => {
     try {
+        await expireActiveMemberships();
         const { applicationId } = req.params;
 
         if (!isValidObjectId(applicationId)) {
@@ -383,15 +386,11 @@ export const approveApplication = async (req, res) => {
         customer.membership.tier = tier || customer.membership.tier;
         customer.membership.approvedAt = new Date();
 
-        if (!customer.membership.joinedAt) {
-            customer.membership.joinedAt = new Date();
-        }
-
-        // Set expiration date (1 year from approval)
-        const expiresAt = new Date();
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-        customer.membership.expiresAt = expiresAt;
-
+        const activationDate = customer.membership.joinedAt
+            ? new Date(customer.membership.joinedAt)
+            : new Date();
+        customer.membership.joinedAt = customer.membership.joinedAt || activationDate;
+        customer.membership.expiresAt = getExpiryDate(activationDate);
         customer.role = 'Member';
 
         await customer.save();
@@ -518,8 +517,7 @@ export const renewMembership = async (req, res) => {
             });
         }
 
-        const expiresAt = new Date();
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        const expiresAt = getExpiryDate(new Date());
 
         customer.membership.expiresAt = expiresAt;
         customer.membership.renewalCount = (customer.membership.renewalCount || 0) + 1;
@@ -685,6 +683,7 @@ export const suspendMembership = async (req, res) => {
  */
 export const getMembershipStats = async (req, res) => {
     try {
+        await expireActiveMemberships();
         const stats = {
             totalMembers: await Customer.countDocuments({ 'membership.status': { $in: ['Active', 'Approved'] } }),
             pending: await Customer.countDocuments({ 'membership.status': 'Pending' }),

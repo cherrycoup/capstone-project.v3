@@ -18,7 +18,7 @@ import {
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
-import logoSrc from "../../assets/logo (1).webp";
+import logoSrc from "../../assets/logo.webp";
 import ClientAppointments from "./ClientAppointments.jsx";
 import ClientHome from "./ClientHome.jsx";
 import ClientOrderForm from "./ClientOrderForm.jsx";
@@ -460,7 +460,7 @@ export default function ClientDashboard() {
           {activeTab === "packages" && (
             <ClientPackages onSelectPackage={handleSelectPackage} />
           )}
-          {activeTab === "order" && <ClientOrderForm selectedPackage={selectedPackage} />}
+          {activeTab === "order" && <ClientOrderForm selectedPackage={selectedPackage} onCancelPackage={() => setSelectedPackage(null)} />}
           {activeTab === "appointments" && <ClientAppointments />}
           {activeTab === "tracking" && <ClientTracking />}
           {activeTab === "settings" && <SettingsPage />}

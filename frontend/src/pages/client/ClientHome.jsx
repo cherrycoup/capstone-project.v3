@@ -169,7 +169,7 @@ function DealsSection({ packageDeals, onOpenPackages }) {
         </CardHeader>
         <CardContent>
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-semibold text-slate-900">Unlock up to 40% member discounts and enjoy priority access to package deals.</p>
+            <p className="text-sm font-semibold text-slate-900">Unlock up to 40% member discounts and enjoy access to package deals.</p>
             <p className="mt-2 text-sm text-slate-600">Join today and make every order more valuable with exclusive pricing designed for members.</p>
           </div>
         </CardContent>
@@ -192,10 +192,10 @@ function DealsSection({ packageDeals, onOpenPackages }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {packageDeals.length > 0 ? packageDeals.map((pkg) => (
-            <div key={pkg._id} className="flex items-center justify-between gap-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+            <div key={pkg._id} className="flex items-center justify-between gap-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4 border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-shadow">
               <div className="min-w-0">
-                <p className="truncate font-semibold text-gray-900">{pkg.name}</p>
-                <p className="mt-1 text-sm text-gray-600">PHP {Number(pkg.price || 0).toLocaleString()}</p>
+                <p className="truncate font-semibold text-blue-900">{pkg.name}</p>
+                <p className="mt-1 text-sm text-blue-700 font-medium">PHP {Number(pkg.price || 0).toLocaleString()}</p>
               </div>
               {pkg.originalPrice > pkg.price && (
                 <span className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-bold text-blue-700">
@@ -216,7 +216,7 @@ function DealsSection({ packageDeals, onOpenPackages }) {
 function MembershipCard({ membership, onApply, onViewStatus, onOpenPackages, isMemberRole }) {
   const active = isMembershipActive(membership) || isMemberRole;
   const hasApplied = membership && membership.status && membership.status !== "None";
-  const shouldShowViewStatus = active || (hasApplied && membership.status === "Pending");
+  const shouldShowViewStatus = active || hasApplied;
 
   const statusCopy = active
     ? "Your membership is active — enjoy your member benefits"
@@ -227,7 +227,7 @@ function MembershipCard({ membership, onApply, onViewStatus, onOpenPackages, isM
         : "Join the membership program when you are ready.";
 
   const Icon = active ? ShieldCheck : hasApplied ? Clock : Award;
-  const action = isMemberRole ? onOpenPackages : hasApplied && membership.status !== "Rejected" ? onViewStatus : onApply;
+  const action = shouldShowViewStatus ? onViewStatus : onApply;
   const actionLabel = shouldShowViewStatus ? "View Status" : "Apply for Membership";
 
   return (

@@ -75,7 +75,14 @@ const AdminLayout = () => {
             <Route path="/dashboard" element={<AdminDashboard />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/packages" element={<AdminPackages />} />
-            <Route path="/memberships" element={<AdminMemberships />} />
+            <Route
+              path="/memberships"
+              element={
+                <ProtectedRoutes requireRole={["Admin"]}>
+                  <AdminMemberships />
+                </ProtectedRoutes>
+              }
+            />
             <Route path="/orders" element={<Orders />} />
             <Route path="/customers" element={<Customers />} />
             <Route
