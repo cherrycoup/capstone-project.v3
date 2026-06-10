@@ -19,6 +19,7 @@ import reportsRoutes from "./routes/reports.js"
 import promotionsRoutes from "./routes/promotions.js"
 import membershipsRoutes from "./routes/memberships.js"
 import mailRoutes from "./routes/mail.js"
+import faqRoutes from "./routes/faqs.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -91,6 +92,7 @@ app.use('/api/memberships', membershipsRoutes)
 app.use('/api/mail', mailRoutes)
 
 // Health check route
+app.use('/api/faqs', faqRoutes)
 app.get('/api/health', (req, res) => {
     res.status(200).json({ success: true, message: "Server is running" })
 })

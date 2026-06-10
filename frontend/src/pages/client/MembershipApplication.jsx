@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
+import BackToHomeButton from '../../components/BackToHomeButton';
 import { toast } from 'sonner';
 import logoSrc from '../../assets/logo.webp';
 import { membershipAPI, packagesAPI } from '../../utils/api';
@@ -97,12 +98,7 @@ export default function MembershipApplication() {
                             </h1>
                         </div>
                         <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                onClick={() => navigate('/dashboard')}
-                            >
-                                Back Home
-                            </Button>
+                            <BackToHomeButton />
                         </div>
                     </div>
                 </div>

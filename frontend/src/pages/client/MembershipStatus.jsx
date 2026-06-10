@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/button";
+import BackToHomeButton from "../../components/BackToHomeButton";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { membershipAPI } from "../../utils/api";
 
@@ -110,9 +111,7 @@ export default function MembershipStatus() {
               </div>
             )}
 
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              Back Home
-            </Button>
+            <BackToHomeButton />
           </CardContent>
         </Card>
       </div>

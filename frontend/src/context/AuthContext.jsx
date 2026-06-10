@@ -39,11 +39,10 @@ export const AuthProvider = ({ children }) => {
             } catch (error) {
                 if (!mounted) return;
 
-                if (isAuthFailure(error)) {
-                    setUser(null);
-                    localStorage.removeItem("pos-user");
-                    localStorage.removeItem("pos-token");
-                }
+                // Always clear auth data on any error to prevent redirect loops
+                setUser(null);
+                localStorage.removeItem("pos-user");
+                localStorage.removeItem("pos-token");
             } finally {
                 if (mounted) {
                     setLoading(false);

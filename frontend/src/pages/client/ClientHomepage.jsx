@@ -55,12 +55,6 @@ export default function ClientHomepage() {
             <div className="flex gap-3 shrink-0 flex-wrap">
               {user ? (
                 <>
-                  <Link to="/membership/apply">
-                    <Button variant="outline" className="gap-2">
-                      <Heart className="h-4 w-4" />
-                      <span className="hidden sm:inline">Membership</span>
-                    </Button>
-                  </Link>
                   <Link to="/dashboard">
                     <Button>Dashboard</Button>
                   </Link>
@@ -102,10 +96,9 @@ export default function ClientHomepage() {
                     Explore Products <ArrowRight className="h-4 w-4" />
                   </Button>
                 </a>
-                <Link to="/membership/apply">
+                <Link to="/faq">
                   <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto">
-                    <Heart className="h-4 w-4" />
-                    Membership
+                    Know More About Us <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
               </>

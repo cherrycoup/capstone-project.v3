@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "../../components/ui/alert.jsx";
 import { Button } from "../../components/ui/button.jsx";
+import BackToHomeButton from "../../components/BackToHomeButton.jsx";
 import { Input } from "../../components/ui/input.jsx";
 import { Label } from "../../components/ui/label.jsx";
 import { Textarea } from "../../components/ui/textarea.jsx";
@@ -177,12 +178,7 @@ export default function MembershipApplicationForm() {
                 </h1>
               </div>
               <div>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/dashboard")}
-                >
-                  Back Home
-                </Button>
+                <BackToHomeButton />
               </div>
             </div>
           </div>
@@ -222,12 +218,7 @@ export default function MembershipApplicationForm() {
               </h1>
             </div>
             <div>
-              <Button
-                variant="outline"
-                onClick={() => navigate("/dashboard")}
-              >
-                Back Home
-              </Button>
+              <BackToHomeButton />
             </div>
           </div>
         </div>

@@ -253,4 +253,14 @@ export const reportsAPI = {
     }
 };
 
+// FAQ APIs
+export const faqAPI = {
+    getAll: () => api.get('/faqs'),
+    getById: (id) => api.get(`/faqs/${id}`),
+    create: (data) => api.post('/faqs', data),
+    update: (id, data) => api.put(`/faqs/${id}`, data),
+    delete: (id) => api.delete(`/faqs/${id}`),
+    getByCategory: (category) => api.get(`/faqs/category/${category}`),
+};
+
 export default api;

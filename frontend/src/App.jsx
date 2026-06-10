@@ -19,6 +19,7 @@ const Inventory = lazy(() => import("./pages/admin/Inventory"));
 const Orders = lazy(() => import("./pages/admin/Orders"));
 const Reports = lazy(() => import("./pages/admin/Reports"));
 const StaffManagement = lazy(() => import("./pages/admin/StaffManagement"));
+const AdminFAQ = lazy(() => import("./pages/admin/AdminFAQ"));
 const ClientDashboard = lazy(() => import("./pages/client/ClientDashboard"));
 const ClientHomepage = lazy(() => import("./pages/client/ClientHomepage"));
 const ClientTracking = lazy(() => import("./pages/client/ClientTracking"));
@@ -26,6 +27,10 @@ const MembershipApplication = lazy(() => import("./pages/client/MembershipApplic
 const MembershipApplicationForm = lazy(() => import("./pages/client/MembershipApplicationForm"));
 const MembershipStatus = lazy(() => import("./pages/client/MembershipStatus"));
 const Settings = lazy(() => import("./pages/shared/Settings"));
+const FAQ = lazy(() => import("./pages/shared/FAQ"));
+const WarrantyReturns = lazy(() => import("./pages/shared/WarrantyReturns"));
+const Terms = lazy(() => import("./pages/shared/Terms"));
+const Privacy = lazy(() => import("./pages/shared/Privacy"));
 
 const PageLoader = () => (
   <div className="app-loader" role="status" aria-live="polite">
@@ -145,6 +150,14 @@ const AdminLayout = () => {
                 </ProtectedRoutes>
               }
             />
+              <Route
+                path="/faqs"
+                element={
+                  <ProtectedRoutes requireRole={["Admin"]}>
+                    <AdminFAQ />
+                  </ProtectedRoutes>
+                }
+              />
           </Routes>
         </div>
       </div>
@@ -212,6 +225,12 @@ const App = () => (
               }
             />
 
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/warranty-returns" element={<WarrantyReturns />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+
+            {/* Public landing page - always accessible */}
             <Route path="/" element={<ClientHomepage />} />
           </Routes>
         </Suspense>
