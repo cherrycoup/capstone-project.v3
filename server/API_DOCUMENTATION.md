@@ -135,7 +135,7 @@ Request:
   "email": "john@example.com",
   "address": "123 Main St",
   "paymentMethod": "Credit Card",
-  "referenceNumber": "REF001",
+  "referenceNumber": "ORD-20260611-ABCDE",
   "items": [
     {
       "productId": "product-id",

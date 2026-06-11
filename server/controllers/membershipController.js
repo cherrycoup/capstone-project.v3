@@ -7,7 +7,14 @@ import { cleanString, isValidObjectId } from "../utils/validation.js";
 import { sendMembershipApprovalEmail } from "../utils/emailService.js";
 import { getExpiryDate, expireActiveMemberships } from "../utils/membership.js";
 
-const buildMembershipOrderReference = () => `MEM-${Date.now()}-${Math.floor(Math.random() * 9000) + 1000}`;
+const buildMembershipOrderReference = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const suffix = Array.from({ length: 3 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join("");
+    return `MEM-${year}${month}${day}-${suffix}`;
+};
 
 const getAuthenticatedAccount = async (tokenUser) => {
     const account = await User.findById(tokenUser?.id || tokenUser?._id);

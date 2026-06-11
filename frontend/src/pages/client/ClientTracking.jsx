@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Calendar, Package, Search } from "lucide-react";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
@@ -36,6 +37,9 @@ export default function ClientTracking() {
   const [myAppointments, setMyAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const location = useLocation();
+  const orderQuery = new URLSearchParams(location.search).get("order") || "";
+
   const fetchUserData = useCallback(async () => {
     let nextOrders = [];
     let nextAppointments = [];
@@ -70,12 +74,41 @@ export default function ClientTracking() {
     fetchUserData();
   }, [fetchUserData]);
 
+  const searchById = (id) => {
+    const normalizedId = id.trim().toLowerCase();
+
+    const order = myOrders.find((item) => {
+      const orderId = item.orderId || item.referenceNumber || item._id;
+      return (
+        item.referenceNumber?.toLowerCase() === normalizedId ||
+        orderId?.toLowerCase() === normalizedId
+      );
+    });
+
+    const appointment = myAppointments.find((item) => {
+      const appointmentId =
+        item.appointmentId ||
+        `APT-${item._id?.toString().slice(-6).toUpperCase()}`;
+
+      return (
+        appointmentId?.toLowerCase() === normalizedId ||
+        item._id?.toString().toLowerCase() === normalizedId
+      );
+    });
+
+    setSearchResult(order || appointment || null);
+  };
+
+  useEffect(() => {
+    if (!loading && orderQuery) {
+      setTrackingId(orderQuery);
+      searchById(orderQuery);
+    }
+  }, [loading, orderQuery, myOrders, myAppointments]);
+
   const handleSearch = (event) => {
     event.preventDefault();
-    const normalizedId = trackingId.trim().toUpperCase();
-    const order = myOrders.find((item) => item.referenceNumber?.toUpperCase() === normalizedId);
-    const appointment = myAppointments.find((item) => `APT-${item._id?.slice(-6)}`.toUpperCase() === normalizedId);
-    setSearchResult(order || appointment || null);
+    searchById(trackingId);
   };
 
   if (loading) {
@@ -107,7 +140,7 @@ export default function ClientTracking() {
         <CardContent>
           <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
             <Input
-              placeholder="Enter Order ID (e.g., ORD-001) or Appointment ID (e.g., APT-001)"
+              placeholder="Enter Order ID (e.g., ORD-20260611-ABCDE) or Appointment ID (e.g., APT-20260611-XXXXX)"
               value={trackingId}
               onChange={(event) => setTrackingId(event.target.value)}
             />
@@ -122,11 +155,16 @@ export default function ClientTracking() {
               {"referenceNumber" in searchResult ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-4">
-                    <h4 className="font-semibold">Order {searchResult.referenceNumber}</h4>
+                    <h4 className="font-semibold">Order {searchResult.referenceNumber || searchResult.orderId || searchResult._id}</h4>
                     <Badge className={orderStatusColors[searchResult.status] || "bg-gray-100 text-gray-800"}>
                       {searchResult.status}
                     </Badge>
                   </div>
+                  {searchResult.referenceNumber && (
+                    <p className="text-sm">
+                      <strong>Reference:</strong> {searchResult.referenceNumber}
+                    </p>
+                  )}
                   <p className="text-sm">
                     <strong>Items:</strong> {searchResult.itemCount || 0} | <strong>Total:</strong> PHP{" "}
                     {searchResult.total.toLocaleString()}
@@ -135,7 +173,7 @@ export default function ClientTracking() {
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-4">
-                    <h4 className="font-semibold">Appointment APT-{searchResult._id?.slice(-6)}</h4>
+                    <h4 className="font-semibold">Appointment {searchResult.appointmentId}</h4>
                     <Badge
                       className={
                         appointmentStatusColors[searchResult.status] || "bg-gray-100 text-gray-800"
@@ -180,20 +218,35 @@ export default function ClientTracking() {
                       <Package className="h-6 w-6 text-blue-600" />
                     </div>
                     <div>
-                      <h4 className="font-semibold">{order.referenceNumber}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold">Order {order.referenceNumber || order.orderId || order._id}</h4>
+                        {order.membershipDiscountAmount > 0 && (
+                          <Badge className="bg-green-100 text-green-800">Member</Badge>
+                        )}
+                      </div>
+                      {order.referenceNumber && (
+                        <p className="text-sm text-gray-500">Reference: {order.referenceNumber}</p>
+                      )}
                       <p className="text-sm text-gray-600">
                         Placed on {new Date(order.createdAt).toLocaleDateString()}
                       </p>
-                      <p className="text-sm text-gray-600">
-                        {order.itemCount || 0} items - PHP {Number(order.total || 0).toLocaleString()}
-                      </p>
+                      <div className="text-sm text-gray-600 mt-2">
+                        {order.itemCount || 0} items
+                        <div className="font-semibold text-gray-900 mt-1">
+                          PHP {Number(order.total || 0).toLocaleString()}
+                        </div>
+                        {order.membershipDiscountAmount > 0 && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Member savings: PHP {Number(order.membershipDiscountAmount || 0).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-col md:items-end gap-2">
                     <Badge className={orderStatusColors[order.status] || "bg-gray-100 text-gray-800"}>
                       {order.status}
                     </Badge>
-                    <p className="text-sm text-gray-600">Reference {order.referenceNumber}</p>
                   </div>
                 </div>
               </CardContent>
@@ -211,7 +264,7 @@ export default function ClientTracking() {
                       <Calendar className="h-6 w-6 text-purple-600" />
                     </div>
                     <div>
-                      <h4 className="font-semibold">APT-{appointment._id?.slice(-6) || 'Unknown'}</h4>
+                    <h4 className="font-semibold">{appointment.appointmentId || `APT-${appointment._id?.slice(-6)}`}</h4>
                       <div className="text-sm text-gray-600">Service: {appointment.service}</div>
                       <div className="text-sm text-gray-600">
                         {new Date(appointment.date).toLocaleDateString()} at {appointment.timeSlot || appointment.time}

@@ -1,11 +1,14 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Home } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '../context/AuthContext';
 
 export default function BackToHomeButton() {
   const { user } = useAuth();
-  const homeLink = user ? '/dashboard' : '/';
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const returnTo = params.get('returnTo');
+  const homeLink = returnTo || (user ? '/dashboard' : '/');
 
   return (
     <Link to={homeLink}>

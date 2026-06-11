@@ -6,6 +6,7 @@ import {
     createStaff,
     updateStaff,
     updateStaffPassword,
+    adminResetPassword,
     updateOwnPassword,
     deleteStaff,
     getStaffStats,
@@ -26,6 +27,7 @@ router.get("/:id", getStaffById);
 router.post("/", createStaff);
 router.put("/:id", updateStaff);
 router.put("/:id/password", updateStaffPassword);
+router.put("/:id/admin-reset-password", adminResetPassword);
 router.put("/:id/deactivate", deactivateStaff);
 router.delete("/:id", deleteStaff);
 

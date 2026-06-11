@@ -335,12 +335,18 @@ const handleSubmit = async (event) => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {TIME_SLOTS.map((slot) => (
-                  <div key={slot} className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-blue-600" />
-                    <span className="text-blue-800">{slot}</span>
-                  </div>
-                ))}
+                {TIME_SLOTS.map((slot) => {
+                  const slotAvailable = availableSlots.includes(slot);
+                  return (
+                    <div
+                      key={slot}
+                      className={`flex items-center gap-2 text-sm ${slotAvailable ? "text-blue-800" : "text-gray-500 line-through opacity-70"}`}
+                    >
+                      <Clock className="h-4 w-4 text-blue-600" />
+                      <span>{slot}</span>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

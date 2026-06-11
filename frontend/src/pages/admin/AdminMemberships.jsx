@@ -138,6 +138,7 @@ export default function AdminMemberships() {
       window.alert(err.response?.data?.message || 'Unable to cancel membership.');
     }
   };
+  
   const members = stats.active || customers.filter(c => c.role === 'Member').length;
   const guests = customers.filter(c => c.role === 'Guest').length || Math.max(0, total - members);
 
@@ -152,11 +153,7 @@ export default function AdminMemberships() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-sm text-slate-500">TOTAL MEMBERS</div>
-          <div className="text-2xl font-bold">{total}</div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg p-4 shadow-sm">
           <div className="text-sm text-slate-500">ACTIVE</div>
           <div className="text-2xl font-bold text-green-600">{members}</div>

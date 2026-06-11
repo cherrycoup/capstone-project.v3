@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import logoSrc from '../../assets/logo.webp';
 import { ArrowRight, Zap, Lightbulb, Wrench, Gauge, Heart, Flame, Package, Percent, ImageIcon, ShoppingBag, Mail, MapPin, Phone, Clock } from 'lucide-react';
@@ -16,6 +16,8 @@ import { packagesAPI, productsAPI } from '../../utils/api';
 
 export default function ClientHomepage() {
   const { user } = useAuth();
+  const location = useLocation();
+  const returnTo = encodeURIComponent(`${location.pathname}${location.hash}`);
   const [packageDeals, setPackageDeals] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
 
@@ -24,9 +26,8 @@ export default function ClientHomepage() {
       try {
         const [packagesResponse, productsResponse] = await Promise.all([
           packagesAPI.getAll().catch(() => ({ data: { data: [] } })),
-          productsAPI.getAll({ limit: 4 }).catch(() => ({ data: { data: [] } })),
+          productsAPI.getAll({ limit: 1000 }).catch(() => ({ data: { data: [] } })),
         ]);
-
         setPackageDeals((packagesResponse.data.data || []).slice(0, 3));
         setFeaturedProducts(productsResponse.data.data || []);
       } catch (error) {
@@ -54,11 +55,20 @@ export default function ClientHomepage() {
             </div>
             <div className="flex gap-3 shrink-0 flex-wrap">
               {user ? (
-                <>
-                  <Link to="/dashboard">
-                    <Button>Dashboard</Button>
+                user?.type === "customer" ? (
+                  <>
+                    <Link to="/dashboard">
+                      <Button>Dashboard</Button>
+                    </Link>
+                    <Link to="/membership/status">
+                      <Button variant="outline">Membership</Button>
+                    </Link>
+                  </>
+                ) : (
+                  <Link to="/admin">
+                    <Button>Admin</Button>
                   </Link>
-                </>
+                )
               ) : (
                 <>
                   <Link to="/login">
@@ -96,7 +106,7 @@ export default function ClientHomepage() {
                     Explore Products <ArrowRight className="h-4 w-4" />
                   </Button>
                 </a>
-                <Link to="/faq">
+                <Link to={`/faq?returnTo=${returnTo}`}>
                   <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto">
                     Know More About Us <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -110,8 +120,8 @@ export default function ClientHomepage() {
                   </Button>
                 </a>
                 <a href="#products">
-                  <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                    Explore Products
+                  <Button size="lg" variant="outline" className="gap-2 w-full sm:w-auto">
+                    Explore Products <ArrowRight className="h-4 w-4" />
                   </Button>
                 </a>
               </>
@@ -239,11 +249,11 @@ export default function ClientHomepage() {
           <div className="min-w-[250px] flex-1">
             <h3 className="mb-5 text-lg font-bold text-blue-400">SUPPORT</h3>
             <ul className="space-y-4">
-              <li><Link to="/faq" className="transition hover:text-blue-400">FAQs</Link></li>
+              <li><Link to={`/faq?returnTo=${returnTo}`} className="transition hover:text-blue-400">FAQs</Link></li>
               <li><a href="mailto:support@jbm.com.ph" className="transition hover:text-blue-400">Contact Us</a></li>
-              <li><Link to="/warranty-returns" className="transition hover:text-blue-400">Warranty & Returns</Link></li>
-              <li><Link to="/terms" className="transition hover:text-blue-400">Terms & Conditions</Link></li>
-              <li><Link to="/privacy" className="transition hover:text-blue-400">Privacy Policy</Link></li>
+              <li><Link to={`/warranty-returns?returnTo=${returnTo}`} className="transition hover:text-blue-400">Warranty & Returns</Link></li>
+              <li><Link to={`/terms?returnTo=${returnTo}`} className="transition hover:text-blue-400">Terms & Conditions</Link></li>
+              <li><Link to={`/privacy?returnTo=${returnTo}`} className="transition hover:text-blue-400">Privacy Policy</Link></li>
             </ul>
           </div>
 
@@ -282,9 +292,13 @@ export default function ClientHomepage() {
 }
 
 function ProductsPreview({ products }) {
+  const [showAll, setShowAll] = useState(false);
+
   if (products.length === 0) {
     return null;
   }
+
+  const displayedProducts = showAll ? products : products.slice(0, 4);
 
   return (
     <section id="products" className="scroll-mt-20 py-16 px-4">
@@ -300,16 +314,14 @@ function ProductsPreview({ products }) {
               See real inventory, prices, and stock before creating your order.
             </p>
           </div>
-          <Link to="/login">
-            <Button variant="outline" className="w-full gap-2 md:w-auto">
-              Sign In to Order
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </Link>
+          <Button variant="outline" className="w-full gap-2 md:w-auto" onClick={() => setShowAll(!showAll)}>
+            {showAll ? 'Show Less' : 'See All'}
+            <ArrowRight className="h-4 w-4" />
+          </Button>
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {products.map((product) => (
+          {displayedProducts.map((product) => (
             <Card key={product._id} className="flex h-full flex-col overflow-hidden border-slate-200 shadow-sm">
               <div className="flex h-36 items-center justify-center bg-slate-100">
                 {product.imageUrl ? (
@@ -321,15 +333,10 @@ function ProductsPreview({ products }) {
               <CardContent className="flex flex-1 flex-col p-4">
                 <p className="line-clamp-2 font-semibold text-gray-900">{product.productName}</p>
                 <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{product.category || "Electrical product"}</p>
-                <div className="mt-auto flex items-center justify-between gap-3 pt-4">
+                <div className="mt-auto flex flex-col gap-2 pt-4">
                   <span className="font-bold text-slate-900">PHP {Number(product.srp ?? product.price ?? 0).toLocaleString()}</span>
                   <span className="text-xs font-medium text-gray-500">{Number(product.stockLevel || 0)} in stock</span>
                 </div>
-                <Link to="/login" className="mt-4 block">
-                  <Button className="w-full" variant="outline">
-                    Add to Cart
-                  </Button>
-                </Link>
               </CardContent>
             </Card>
           ))}

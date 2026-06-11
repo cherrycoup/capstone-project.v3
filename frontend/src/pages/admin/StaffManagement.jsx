@@ -10,6 +10,8 @@ import {
   UserRound,
   UsersRound,
   UserX,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
@@ -51,6 +53,7 @@ export default function StaffManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     fetchStaff();
@@ -127,7 +130,12 @@ export default function StaffManagement() {
           profileImageUrl: formData.profileImageUrl,
           isActive: formData.isActive,
         });
-        toast.success("Staff member updated");
+
+        if (formData.password) {
+          await staffAPI.adminResetPassword(editingId, formData.password);
+        }
+
+        toast.success(formData.password ? "Staff member updated and password reset" : "Staff member updated");
       } else {
         await staffAPI.create({
           name: formData.name,
@@ -386,19 +394,29 @@ export default function StaffManagement() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
-              {!editingId && (
-                <div className="space-y-2">
-                  <Label htmlFor="staffPassword">Password</Label>
+              <div className="space-y-2">
+                <Label htmlFor="staffPassword">{editingId ? "New Password (leave blank to keep current)" : "Password"}</Label>
+                <div className="relative">
                   <Input
                     id="staffPassword"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(event) => setFormData({ ...formData, password: event.target.value })}
                     minLength={8}
-                    required
+                    required={!editingId}
+                    className="pr-10"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
-              )}
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="staffRole">Role</Label>
                 <select

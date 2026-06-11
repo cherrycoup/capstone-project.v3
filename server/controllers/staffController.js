@@ -187,10 +187,10 @@ export const updateStaffPassword = async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
 
-        if (!oldPassword || !newPassword) {
+        if (!newPassword) {
             return res.status(400).json({
                 success: false,
-                message: "oldPassword and newPassword are required"
+                message: "newPassword is required"
             });
         }
 
@@ -210,16 +210,64 @@ export const updateStaffPassword = async (req, res) => {
             });
         }
 
-        // Verify old password
-        const isPasswordValid = await bcrypt.compare(oldPassword, staffMember.password);
-        if (!isPasswordValid) {
-            return res.status(400).json({
-                success: false,
-                message: "Old password is incorrect"
-            });
+        // Allow admin resets without the current password.
+        if (oldPassword) {
+            const isPasswordValid = await bcrypt.compare(oldPassword, staffMember.password);
+            if (!isPasswordValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Old password is incorrect"
+                });
+            }
         }
 
         // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        staffMember.password = hashedPassword;
+        await staffMember.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Password updated successfully"
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * Admin reset staff password without current password
+ */
+export const adminResetPassword = async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+
+        if (!newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "newPassword is required"
+            });
+        }
+
+        if (!isStrongPassword(newPassword)) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 8 characters and include a letter and a number"
+            });
+        }
+
+        const staffMember = await Staff.findById(req.params.id);
+
+        if (!staffMember) {
+            return res.status(404).json({
+                success: false,
+                message: "Staff not found"
+            });
+        }
+
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         staffMember.password = hashedPassword;
         await staffMember.save();

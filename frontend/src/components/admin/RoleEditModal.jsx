@@ -15,15 +15,18 @@ const formatDate = (value) => {
 const getPredictedExpiryDate = (customer, selectedRole) => {
     if (selectedRole !== 'Member') return null;
 
-    const currentExpiry = customer?.membership?.expiresAt ? new Date(customer.membership.expiresAt) : null;
     const now = new Date();
+    const currentExpiry = customer?.membership?.expiresAt ? new Date(customer.membership.expiresAt) : null;
+
+    if (customer?.role !== 'Member') {
+        return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
+    }
 
     if (currentExpiry && currentExpiry > now) {
         return currentExpiry;
     }
 
-    const joinedAt = customer?.membership?.joinedAt ? new Date(customer.membership.joinedAt) : now;
-    return new Date(joinedAt.getTime() + 365 * 24 * 60 * 60 * 1000);
+    return new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000);
 };
 
 export default function RoleEditModal({ customer, onClose, onSave }) {

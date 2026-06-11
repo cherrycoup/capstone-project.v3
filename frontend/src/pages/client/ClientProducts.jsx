@@ -141,7 +141,7 @@ export default function ClientProducts() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16 mx-auto max-w-7xl">
       <div className="flex justify-between items-start">
         <div>
           <h2 className="text-3xl font-bold">Browse Products</h2>
@@ -189,16 +189,19 @@ export default function ClientProducts() {
           const priceLabel = Number(displayPrice).toLocaleString();
           const originalPriceLabel = Number(basePrice).toLocaleString();
           const stockLabel = getProductStock(product);
+          const getMinStock = (p) => Number(p?.minStock ?? 0);
+          const minStock = getMinStock(product);
           const tagLabel = product.category || "Saver";
-          const lowStock = stockLabel > 0 && stockLabel <= 3;
+          const lowStock =
+            stockLabel > 0 && (minStock > 0 ? stockLabel <= minStock : stockLabel <= 3);
 
           return (
             <Card
               key={product._id}
-              className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl"
+              className="h-full flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl"
               onClick={() => openProductDetails(product)}
             >
-              <CardContent className="px-6 py-7">
+              <CardContent className="px-6 py-7 flex flex-col flex-1">
                 <div className="mx-auto flex aspect-square w-full items-center justify-center overflow-hidden rounded-[2rem] bg-slate-100 shadow-sm">
                   {product.imageUrl ? (
                     <img
@@ -210,16 +213,16 @@ export default function ClientProducts() {
                     <ImageIcon className="h-14 w-14 text-slate-400" />
                   )}
                 </div>
-
-                <div className="mt-6 space-y-3">
+                <div className="flex-1 flex flex-col justify-between">
+                  <div className="mt-6 space-y-3">
                   <div className="text-xl font-semibold text-slate-900">{product.productName || product.name}</div>
                   <Badge className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-700">
                     <Star className="h-3 w-3" />
                     {tagLabel}
                   </Badge>
-                </div>
+                  </div>
 
-                <div className="mt-6 flex items-end justify-between gap-4">
+                  <div className="mt-6 flex items-end justify-between gap-4">
                   <div>
                     {isMember ? (
                       <div className="space-y-1">
@@ -229,9 +232,16 @@ export default function ClientProducts() {
                     ) : (
                       <div className="text-2xl font-bold text-slate-900">PHP {priceLabel}</div>
                     )}
-                    <div className={`mt-1 text-xs ${stockLabel <= 0 ? "text-rose-600" : lowStock ? "text-rose-600" : "text-emerald-600"}`}>
-                      {stockLabel <= 0 ? "Out of stock" : lowStock ? `Only ${stockLabel} left` : `${stockLabel} in stock`}
+                    <div className="mt-1 text-xs">
+                      {stockLabel <= 0 ? (
+                        <Badge variant="destructive">Out of stock</Badge>
+                      ) : lowStock ? (
+                        <Badge className="bg-rose-50 text-rose-700">Only {stockLabel} left</Badge>
+                      ) : (
+                        <span className="text-emerald-600">{stockLabel} in stock</span>
+                      )}
                     </div>
+                  </div>
                   </div>
                 </div>
 

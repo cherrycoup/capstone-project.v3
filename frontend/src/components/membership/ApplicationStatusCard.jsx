@@ -25,11 +25,12 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
         );
     }
 
-    const StatusIcon = STATUS_ICONS[membership.status] || AlertCircle;
     const isExpired = isMembershipExpired(membership);
+    const StatusIcon = STATUS_ICONS[isExpired ? 'Expired' : membership.status] || AlertCircle;
     const daysRemaining = getDaysUntilExpiration(membership.expiresAt);
 
     const getStatusColor = () => {
+        if (isExpired) return 'bg-gray-50 border-gray-200';
         switch (membership.status) {
             case 'Approved':
             case 'Active':
@@ -47,6 +48,7 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
     };
 
     const getTextColor = () => {
+        if (isExpired) return 'text-gray-900';
         switch (membership.status) {
             case 'Approved':
             case 'Active':
@@ -71,31 +73,31 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
                         <div className="flex items-center gap-3 mb-2">
                             <StatusIcon className={`h-6 w-6 ${getTextColor()}`} />
                             <CardTitle className={getTextColor()}>
-                                {membership.status}
+                                {isExpired ? 'Expired' : membership.status}
                             </CardTitle>
-                            {membership.status === 'Active' && (
+                            {!isExpired && membership.status === 'Active' && (
                                 <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-900 text-white">
                                     {membership.tier || 'Member'}
                                 </span>
                             )}
                         </div>
                         <CardDescription className={getTextColor()}>
-                            {membership.status === 'Pending' && (
-                                'Your application is under review. We will notify you within 24-48 hours.'
-                            )}
-                            {membership.status === 'Active' && (
-                                `Your membership is active and benefits are available`
-                            )}
-                            {membership.status === 'Approved' && (
-                                'Your membership has been approved. Activation will be set once your order is completed.'
-                            )}
-                            {membership.status === 'Rejected' && (
-                                'Your application was not approved. You can submit a new application.'
-                            )}
-                            {membership.status === 'Expired' && (
+                            {isExpired && (
                                 'Your membership has expired. Apply again to regain benefits.'
                             )}
-                            {membership.status === 'Suspended' && (
+                            {!isExpired && membership.status === 'Pending' && (
+                                'Your application is under review. We will notify you within 24-48 hours.'
+                            )}
+                            {!isExpired && membership.status === 'Active' && (
+                                `Your membership is active and benefits are available`
+                            )}
+                            {!isExpired && membership.status === 'Approved' && (
+                                'Your membership has been approved. Activation will be set once your order is completed.'
+                            )}
+                            {!isExpired && membership.status === 'Rejected' && (
+                                'Your application was not approved. You can submit a new application.'
+                            )}
+                            {!isExpired && membership.status === 'Suspended' && (
                                 'Your membership is currently suspended. Please contact support.'
                             )}
                         </CardDescription>
@@ -105,18 +107,14 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
 
             <CardContent className="space-y-6">
                 {/* Membership Details */}
-                {(membership.status === 'Active' || membership.status === 'Approved') && (
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 p-4 rounded-lg bg-white/60">
+                {!isExpired && (membership.status === 'Active' || membership.status === 'Approved') && (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 p-4 rounded-lg bg-white/60">
                         <div>
                             <p className="text-xs text-gray-600 font-medium">Tier</p>
                             <p className="text-lg font-bold text-gray-900">{membership.tier}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-600 font-medium">Loyalty Points</p>
-                            <p className="text-lg font-bold text-blue-600">{membership.pointsBalance || 0}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-600 font-medium">Joined</p>
+                            <p className="text-xs text-gray-600 font-medium">Activated</p>
                             <p className="text-sm font-medium text-gray-900">
                                 {new Date(membership.joinedAt).toLocaleDateString()}
                             </p>
@@ -168,9 +166,9 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
                         </Button>
                     )}
 
-                    {(membership.status === 'Active' || isExpired) && onRenew && (
+                    {(isExpired || membership.status === 'Expired') && onRenew && (
                         <Button onClick={onRenew} variant="outline" className="flex-1 sm:flex-none">
-                            {isExpired ? 'Apply Again' : 'Renew Early'}
+                            Apply Again
                         </Button>
                     )}
 

@@ -216,7 +216,7 @@ export default function AdminDashboard() {
               <tbody>
                 {recentOrders.map((order) => (
                   <tr key={order._id} className="border-b last:border-0">
-                    <td className="py-3 px-4">{order.referenceNumber}</td>
+                    <td className="py-3 px-4">{order.orderId || order.referenceNumber || order._id}</td>
                     <td className="py-3 px-4">{order.customerName}</td>
                     <td className="py-3 px-4 hidden md:table-cell">
                       {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "-"}

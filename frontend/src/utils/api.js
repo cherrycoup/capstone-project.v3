@@ -230,6 +230,8 @@ export const staffAPI = {
     update: (id, staffData) => api.put(`/staff/${id}`, staffData),
     updatePassword: (id, oldPassword, newPassword) =>
         api.put(`/staff/${id}/password`, { oldPassword, newPassword }),
+    adminResetPassword: (id, newPassword) =>
+        api.put(`/staff/${id}/admin-reset-password`, { newPassword }),
     updateOwnPassword: (oldPassword, newPassword) =>
         api.put(`/staff/me/password`, { oldPassword, newPassword }),
     delete: (id) => api.delete(`/staff/${id}`),

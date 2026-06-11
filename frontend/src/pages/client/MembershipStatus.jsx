@@ -4,6 +4,7 @@ import { Button } from "../../components/ui/button";
 import BackToHomeButton from "../../components/BackToHomeButton";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { membershipAPI } from "../../utils/api";
+import ApplicationStatusCard from "../../components/membership/ApplicationStatusCard";
 
 const formatDate = (value) => {
   if (!value) return "Not available";
@@ -43,6 +44,7 @@ export default function MembershipStatus() {
   const packageName = membershipData?.selectedPackageDeal?.name || membershipData?.entryPackage || "N/A";
   const paymentMethod = membershipData?.membershipPaymentInfo?.paymentMethod || "N/A";
   const paymentReference = membershipData?.membershipPaymentInfo?.referenceNumber || "N/A";
+  const membershipOrderId = membershipData?.order?.referenceNumber || membershipData?.order?.id || "N/A";
   const submittedAt = membershipData?.applicationSubmittedAt;
   const applicationNotes = membershipData?.applicationNotes || "No notes available.";
 
@@ -57,30 +59,12 @@ export default function MembershipStatus() {
             {loading ? (
               <p className="text-sm text-gray-600">Loading status...</p>
             ) : (
-              <div className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</p>
-                    <p className="mt-2 text-lg font-bold text-slate-900">{status}</p>
-                  </div>
-                  {isMember ? (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Activation Date</p>
-                        <p className="mt-2 text-lg font-bold text-slate-900">{formatDate(activationDate)}</p>
-                      </div>
-                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Expiry Date</p>
-                        <p className="mt-2 text-lg font-bold text-slate-900">{formatDate(expiryDate)}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Date</p>
-                      <p className="mt-2 text-lg font-bold text-slate-900">{formatDate(defaultDate)}</p>
-                    </div>
-                  )}
-                </div>
+              <>
+                <ApplicationStatusCard
+                  membership={membership}
+                  onRenew={() => navigate('/membership/apply')}
+                  onReapply={() => navigate('/membership/apply')}
+                />
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -88,16 +72,23 @@ export default function MembershipStatus() {
                     <p className="mt-2 text-lg font-bold text-slate-900">{packageName}</p>
                   </div>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payment Method</p>
-                    <p className="mt-2 text-lg font-bold text-slate-900">{paymentMethod}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Order ID</p>
+                    <p className="mt-2 text-lg font-bold text-slate-900">{membershipOrderId}</p>
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payment Method</p>
+                    <p className="mt-2 text-lg font-bold text-slate-900">{paymentMethod}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Payment Reference</p>
                     <p className="mt-2 text-lg font-bold text-slate-900">{paymentReference}</p>
                   </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Applied At</p>
                     <p className="mt-2 text-lg font-bold text-slate-900">{formatDate(submittedAt)}</p>
@@ -108,7 +99,7 @@ export default function MembershipStatus() {
                   <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Application Notes</p>
                   <p className="mt-2 text-sm text-slate-700">{applicationNotes}</p>
                 </div>
-              </div>
+              </>
             )}
 
             <BackToHomeButton />

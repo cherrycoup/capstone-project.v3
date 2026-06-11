@@ -8,6 +8,7 @@ import {
   Menu,
   Package,
   PackagePlus,
+  BookOpen,
   Settings,
   ShoppingCart,
   UsersRound,
@@ -25,6 +26,8 @@ const menuItems = [
   { name: "Inventory", path: "/admin/inventory", icon: <Package className="h-5 w-5" /> },
   { name: "Package Deals", path: "/admin/packages", icon: <PackagePlus className="h-5 w-5" /> },
   { name: "Staff", path: "/admin/staff", icon: <UsersRound className="h-5 w-5" /> },
+  { name: "Memberships", path: "/admin/memberships", icon: <UsersRound className="h-5 w-5" /> },
+  { name: "FAQs", path: "/admin/faqs", icon: <Building2 className="h-5 w-5" /> },
   { name: "Reports", path: "/admin/reports", icon: <BarChart3 className="h-5 w-5" /> },
   { name: "Settings", path: "/admin/settings", icon: <Settings className="h-5 w-5" /> },
 ];
@@ -89,7 +92,7 @@ export const Sidebar = ({ isMobile = false, open, onClose }) => {
             .filter(({ name }) => {
               const userRole = String(user?.role || "").toLowerCase();
               if (userRole === "staff") {
-                return name !== "Staff" && name !== "Memberships";
+                return name !== "Staff" && name !== "Memberships" && name !== "FAQs";
               }
               return true;
             })

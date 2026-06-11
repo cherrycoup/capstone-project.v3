@@ -15,6 +15,9 @@ import {
   User,
   Zap,
 } from "lucide-react";
+import { toast } from "sonner";
+import { membershipAPI } from "../../utils/api.js";
+import { getDaysUntilExpiration, isMembershipExpired } from "../../utils/membership";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -151,6 +154,45 @@ export default function ClientDashboard() {
             action: "tracking",
           });
         });
+
+        // Check membership expiry for customers and add notification/toast
+        try {
+          if (user?.type === "customer") {
+            const membRes = await membershipAPI.getMyMembership();
+            const membData = membRes.data.data || null;
+            const membership = membData?.membership || null;
+            if (membership && membership.expiresAt) {
+              const days = getDaysUntilExpiration(membership.expiresAt);
+              const expired = isMembershipExpired(membership);
+              const id = `membership-${user.id}-${membership.expiresAt}`;
+              if (expired) {
+                userNotifications.push({
+                  id,
+                  title: "Membership expired",
+                  message: "Your membership has expired.",
+                  time: membership.expiresAt ? new Date(membership.expiresAt).toLocaleString() : "Now",
+                  unread: !readIds.includes(id),
+                  type: "membership",
+                  action: "membership",
+                });
+                if (!readIds.includes(id)) toast.error("Your membership has expired.");
+              } else if (days <= 7) {
+                userNotifications.push({
+                  id,
+                  title: "Membership expiring soon",
+                  message: `Your membership expires in ${days} day${days === 1 ? "" : "s"}`,
+                  time: membership.expiresAt ? new Date(membership.expiresAt).toLocaleString() : "",
+                  unread: !readIds.includes(id),
+                  type: "membership",
+                  action: "membership",
+                });
+                if (!readIds.includes(id)) toast(`Your membership expires in ${days} day${days === 1 ? "" : "s"}`);
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error loading membership status for notifications:", e);
+        }
 
         setNotifications(userNotifications);
       } catch (error) {
