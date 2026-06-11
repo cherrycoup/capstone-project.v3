@@ -140,6 +140,7 @@ export default function Orders() {
 
   const filteredOrders = orders.filter((order) => {
     const haystack = [
+      order.orderId || order._id,
       order.referenceNumber,
       order.fullName,
       order.customerId?.name,
@@ -229,7 +230,7 @@ export default function Orders() {
               <tbody>
                 {filteredOrders.map((order) => (
                   <tr key={order._id} className="border-b last:border-0">
-                    <td className="py-3 px-4">{order.referenceNumber}</td>
+                    <td className="py-3 px-4">{order.orderId || order._id}</td>
                     <td className="py-3 px-4">
                       <div>
                         <p>{order.customerId?.name || order.fullName || "Guest"}</p>
@@ -245,28 +246,16 @@ export default function Orders() {
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td className="py-3 px-4">
-                      {(
-                        (order.membershipDiscountAmount || 0) +
-                        (order.promotionDiscountAmount || 0) +
-                        (order.discountAmount || 0)
-                      ) > 0 ? (
-                        (() => {
-                          const membershipDeduct = Number(order.membershipDiscountAmount || 0);
-                          const promotionDeduct = Number(order.promotionDiscountAmount || 0);
-                          const fallbackDeduct = Number(order.discountAmount || 0);
-                          const selectedDeduct = membershipDeduct > 0 ? membershipDeduct : promotionDeduct > 0 ? promotionDeduct : fallbackDeduct;
-                          const original = Number(order.total || 0) + selectedDeduct;
-                          return (
-                            <div className="space-y-1">
-                              <span className="font-semibold text-emerald-700">{formatCurrency(order.total)}</span>
-                              <span className="text-xs text-gray-500 line-through">{formatCurrency(original)}</span>
-                              <span className="text-xs text-emerald-700">-{formatCurrency(selectedDeduct)} {getDiscountLabel(order)}</span>
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        <span>{formatCurrency(order.total)}</span>
-                      )}
+                      <div className="space-y-1">
+                        <span className={order.membershipDiscountAmount > 0 ? "font-semibold text-green-700" : "font-semibold text-slate-900"}>
+                          {formatCurrency(order.total)}
+                        </span>
+                        {order.membershipDiscountAmount > 0 && (
+                          <div className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
+                            Member
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex flex-col gap-1">
@@ -310,7 +299,7 @@ export default function Orders() {
       <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => !open && setSelectedOrder(null)}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Order Details - {detailOrder?.referenceNumber}</DialogTitle>
+            <DialogTitle>Order Details - {detailOrder?.orderId || detailOrder?._id}</DialogTitle>
           </DialogHeader>
           {detailOrder && (
             <div className="space-y-4">
@@ -344,10 +333,10 @@ export default function Orders() {
                   <p>{String(detailOrder.paymentStatus || "pending").replaceAll("_", " ")}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-sm text-gray-500">Reference Number</p>
-                  <p>{detailOrder.referenceNumber}</p>
+                  <p className="text-sm text-gray-500">Order ID</p>
+                  <p>{detailOrder.orderId || detailOrder._id}</p>
                 </div>
-                {detailOrder.paymentReference && (
+                {detailOrder.referenceNumber && (
                   <div className="col-span-2">
                     <p className="text-sm text-gray-500">Gateway Reference</p>
                     <p>{detailOrder.paymentReference}</p>
@@ -415,30 +404,19 @@ export default function Orders() {
                     </>
                   )}
                   <div className="space-y-1 pt-2 border-t">
-                    {detailOrder.discountAmount > 0 && (
-                      <>
-                        <div className="flex justify-between text-sm text-gray-700">
-                          <span>Original Amount</span>
-                          <span>{formatCurrency(Number(detailOrder.total || 0) + Number(detailOrder.discountAmount || 0))}</span>
+                    {detailOrder.membershipDiscountAmount > 0 ? (
+                      <div className="flex justify-between items-center font-semibold bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <Badge className="bg-green-600 text-white">Member Price</Badge>
                         </div>
-                        {detailOrder.membershipDiscountAmount > 0 && (
-                          <div className="flex justify-between text-sm text-emerald-700">
-                            <span>Member discount</span>
-                            <span>-{formatCurrency(detailOrder.membershipDiscountAmount)}</span>
-                          </div>
-                        )}
-                        {detailOrder.promotionDiscountAmount > 0 && (
-                          <div className="flex justify-between text-sm text-emerald-700">
-                            <span>Promotion discount</span>
-                            <span>-{formatCurrency(detailOrder.promotionDiscountAmount)}</span>
-                          </div>
-                        )}
-                      </>
+                        <span className="text-green-700 text-lg">{formatCurrency(detailOrder.total)}</span>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center font-semibold">
+                        <span>Total Amount</span>
+                        <span>{formatCurrency(detailOrder.total)}</span>
+                      </div>
                     )}
-                    <div className="flex justify-between font-semibold pt-2 border-t">
-                      <span>Total Amount</span>
-                      <span>{formatCurrency(detailOrder.total)}</span>
-                    </div>
                   </div>
                 </div>
               </div>

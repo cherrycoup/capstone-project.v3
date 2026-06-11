@@ -181,7 +181,7 @@ export default function ClientProducts() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
         {filteredProducts.map((product) => {
           const isMember = user?.memberRole === "Member";
           const basePrice = Number(product.srp ?? product.price);
@@ -198,10 +198,10 @@ export default function ClientProducts() {
           return (
             <Card
               key={product._id}
-              className="h-full flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl"
+              className="h-full min-h-[30rem] flex flex-col overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl"
               onClick={() => openProductDetails(product)}
             >
-              <CardContent className="px-6 py-7 flex flex-col flex-1">
+              <CardContent className="px-6 py-8 flex flex-col flex-1">
                 <div className="mx-auto flex aspect-square w-full items-center justify-center overflow-hidden rounded-[2rem] bg-slate-100 shadow-sm">
                   {product.imageUrl ? (
                     <img

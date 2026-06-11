@@ -50,12 +50,22 @@ const normalizePaymentMethod = (value) => {
     return null;
 };
 
-const buildReferenceNumber = () =>
-    `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+const buildReferenceNumber = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
+
+    return `ORD-${year}${month}${day}-${suffix}`;
+};
 
 const roundMoney = (amount) => Math.round(Number(amount || 0) * 100) / 100;
 
-const toObject = (doc) => doc.toObject ? doc.toObject() : doc;
+const toObject = (doc) => {
+    if (!doc.toObject) return doc;
+    return doc.toObject({ virtuals: true });
+};
 
 const attachOrderItemCounts = async (orders) => {
     const orderIds = orders.map((order) => order._id);
@@ -273,8 +283,8 @@ export const createOrder = async (req, res) => {
         const email = normalizeEmail(req.body.email);
         const address = cleanString(req.body.address, 500);
         const paymentMethod = normalizePaymentMethod(req.body.paymentMethod);
-        const rawReferenceNumber = cleanString(req.body.referenceNumber, 120);
-        const referenceNumber = rawReferenceNumber || buildReferenceNumber();
+        const rawPaymentReference = cleanString(req.body.referenceNumber, 120);
+        const referenceNumber = buildReferenceNumber();
         const promotionCode = cleanString(req.body.promotionCode, 80).toUpperCase();
         const notes = cleanString(req.body.notes, 1000);
         const packageId = cleanString(req.body.packageId, 80);
@@ -337,7 +347,7 @@ export const createOrder = async (req, res) => {
             });
         }
 
-        if (paymentMethod === "Bank Transfer" && !rawReferenceNumber) {
+        if (paymentMethod === "Bank Transfer" && !rawPaymentReference) {
             return res.status(400).json({
                 success: false,
                 message: "Bank transfer reference number is required",
@@ -459,6 +469,8 @@ export const createOrder = async (req, res) => {
             })),
         });
 
+        const paymentReference = rawPaymentReference || payment.reference;
+
         newOrder = await Order.create({
             customerId: orderCustomerId,
             fullName,
@@ -470,7 +482,7 @@ export const createOrder = async (req, res) => {
             paymentMethod,
             paymentStatus: payment.status,
             paymentGateway: payment.provider,
-            paymentReference: payment.reference,
+            paymentReference,
             paymentCheckoutUrl: payment.checkoutUrl,
             referenceNumber,
             orderType: orderTypeParam || orderType,
@@ -527,6 +539,15 @@ export const createOrder = async (req, res) => {
             });
 
             createdItems.push(orderItem);
+        }
+
+        // Ensure payment contains the created order ID so frontend can track by order
+        try {
+            if (newOrder && payment) {
+                payment.orderId = newOrder._id?.toString();
+            }
+        } catch (e) {
+            // non-fatal
         }
 
         // Record promotion redemptions (non-critical, log errors to prevent cascade)

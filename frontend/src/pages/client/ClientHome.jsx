@@ -192,7 +192,7 @@ function DealsSection({ packageDeals, onOpenPackages }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {packageDeals.length > 0 ? packageDeals.map((pkg) => (
-            <div key={pkg._id} className="flex items-center justify-between gap-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4 border-l-4 border-l-blue-600 shadow-sm hover:shadow-md transition-shadow">
+            <div key={pkg._id} className="flex flex-col gap-3 rounded-lg border border-blue-100 bg-blue-50/60 p-4 border-l-4 border-l-blue-600 shadow-sm transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <p className="truncate font-semibold text-blue-900">{pkg.name}</p>
                 <p className="mt-1 text-sm text-blue-700 font-medium">PHP {Number(pkg.price || 0).toLocaleString()}</p>

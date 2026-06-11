@@ -145,7 +145,8 @@ export default function Appointments() {
   });
 
   const todayReminderAppointments = todayAppointments.filter(
-    (appointment) => appointment.status === "Scheduled"
+    (appointment) =>
+      appointment.status === "Scheduled" || appointment.status === "Confirmed"
   );
 
   const filteredAppointments = sortedAppointments.filter((appointment) => {
