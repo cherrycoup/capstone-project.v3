@@ -343,7 +343,7 @@ export default function Inventory() {
 
       <Card className="border-slate-200 shadow-sm">
         <CardContent className="flex min-h-24 items-center p-4">
-          <div className="mx-auto grid w-full max-w-6xl items-center gap-3 lg:grid-cols-[auto_minmax(0,1fr)_220px_auto]">
+          <div className="mx-auto grid w-full max-w-6xl items-center gap-3 pt-5 lg:grid-cols-[auto_minmax(0,1fr)_220px_auto]">
             <div className="hidden h-10 w-10 items-center justify-center text-gray-400 lg:flex">
               <Search className="h-5 w-5" />
             </div>

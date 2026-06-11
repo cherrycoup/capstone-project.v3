@@ -472,7 +472,7 @@ function Stat({ title, value, icon }) {
         <div className="flex w-full items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm text-gray-500">{title}</p>
-            <p className="mt-3 text-3xl text-slate-900">{value}</p>
+            <p className="mt-3 text-3xl font-bold text-slate-900">{value}</p>
           </div>
           <div className="shrink-0">
             {icon}

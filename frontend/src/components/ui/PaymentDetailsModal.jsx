@@ -38,6 +38,7 @@ export default function PaymentDetailsModal({
   referenceNumber,
   onReferenceNumberChange,
   onConfirm,
+  referenceRequired = true,
 }) {
   if (!open || !paymentMethod) return null;
 
@@ -101,14 +102,14 @@ export default function PaymentDetailsModal({
 
           <div className="space-y-2">
             <label htmlFor="paymentReference" className="text-sm font-medium text-slate-700">
-              Reference Number *
+              Reference Number {referenceRequired ? '*' : '(optional)'}
             </label>
             <input
               id="paymentReference"
               type="text"
               value={referenceNumber}
               onChange={(event) => onReferenceNumberChange(event.target.value)}
-              placeholder="Enter reference number"
+              placeholder={referenceRequired ? "Enter reference number" : "Optional reference number"}
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
@@ -120,7 +121,7 @@ export default function PaymentDetailsModal({
           </Button>
           <Button
             type="button"
-            disabled={!referenceNumber?.trim()}
+            disabled={referenceRequired && !referenceNumber?.trim()}
             onClick={onConfirm}
           >
             Submit

@@ -216,7 +216,7 @@ export default function StaffManagement() {
 
       <Card>
         <CardContent className="flex min-h-24 items-center p-4">
-          <div className="relative mx-auto w-full max-w-6xl">
+          <div className="relative mx-auto w-full max-w-6xl pt-5">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
               placeholder="Search staff by name, email, role, or department..."
@@ -457,7 +457,7 @@ function StaffStat({ title, value, icon }) {
         <div className="flex w-full items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm text-gray-500">{title}</p>
-            <p className="mt-3 break-words text-3xl text-slate-950">{value}</p>
+            <p className="mt-3 break-words text-3xl font-bold text-slate-950">{value}</p>
           </div>
           <div className="shrink-0">
             {icon}

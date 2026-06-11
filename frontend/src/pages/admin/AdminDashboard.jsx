@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Calendar,
-  DollarSign,
   Package,
   ShoppingCart,
   TrendingDown,
@@ -116,7 +115,7 @@ export default function AdminDashboard() {
       value: formatMoney(allTime.totalRevenue),
       change: formatChange(comparison.revenue),
       trend: Number(comparison.revenue || 0) >= 0 ? "up" : "down",
-      icon: DollarSign,
+      icon: null,
       color: "text-orange-600",
       bg: "bg-orange-50",
     },
@@ -156,19 +155,30 @@ export default function AdminDashboard() {
 
           return (
             <Card key={stat.title}>
-              <CardContent className="p-6">
+              <CardContent className="!pt-5 pb-6 px-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">{stat.title}</p>
-                    <p className="text-2xl mt-2">{stat.value}</p>
-                    <div className="flex items-center gap-1 mt-2">
+                    <p className="text-base sm:text-lg font-semibold text-gray-600">{stat.title}</p>
+                    <p className="text-xl sm:text-2xl mt-2 font-bold">
+                      {stat.title === "Total Revenue" ? (
+                        <span className="inline-flex items-baseline gap-1">
+                          <span className="text-base font-semibold text-gray-600">PHP</span>
+                          <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                            {String(stat.value).replace(/^PHP\s*/, "")}
+                          </span>
+                        </span>
+                      ) : (
+                        stat.value
+                      )}
+                    </p>
+                    <div className="flex items-center gap-1 mt-2 text-xs sm:text-sm">
                       <TrendIcon
-                        className={`w-4 h-4 ${
+                        className={`w-3 h-3 ${
                           stat.trend === "up" ? "text-green-600" : "text-red-600"
                         }`}
                       />
                       <span
-                        className={`text-sm ${
+                        className={`font-medium ${
                           stat.trend === "up" ? "text-green-600" : "text-red-600"
                         }`}
                       >
@@ -176,8 +186,12 @@ export default function AdminDashboard() {
                       </span>
                     </div>
                   </div>
-                  <div className={`p-3 rounded-lg ${stat.bg}`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`rounded-lg ${stat.title === "Total Revenue" ? "bg-green-50" : stat.bg} p-3 mt-1`}>
+                    {stat.title === "Total Revenue" ? (
+                      <span className="inline-flex h-5 w-5 items-center justify-center text-orange-600 text-base font-bold leading-none">₱</span>
+                    ) : (
+                      stat.icon ? <Icon className={`w-5 h-5 ${stat.color}`} /> : null
+                    )}
                   </div>
                 </div>
               </CardContent>

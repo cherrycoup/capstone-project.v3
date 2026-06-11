@@ -95,7 +95,18 @@ export default function ClientHome({ onNavigateTab }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <Stat title="My Orders" value={stats.orders} note="All purchases" icon={TrendingUp} color="from-blue-500 to-blue-600" />
         <Stat title="Appointments" value={stats.appointments} note="Active bookings" icon={Award} color="from-green-500 to-emerald-600" />
-        <Stat title="Total Spent" value={`PHP ${stats.spent.toLocaleString()}`} note="Account lifetime" icon={Target} color="from-purple-500 to-pink-600" />
+        <Stat
+          title="Total Spent"
+          value={
+            <span className="inline-flex items-baseline gap-1">
+              <span className="text-sm sm:text-base font-semibold text-gray-900">PHP</span>
+              <span className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">{stats.spent.toLocaleString()}</span>
+            </span>
+          }
+          note="Account lifetime"
+          icon={Target}
+          color="from-purple-500 to-pink-600"
+        />
         <Stat title="Pending Orders" value={stats.pending} note="Awaiting confirmation" icon={Package} color="from-orange-500 to-red-600" />
       </div>
 
@@ -272,14 +283,14 @@ function Stat({ title, value, note, icon, color }) {
   const Icon = icon;
   return (
     <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
-      <CardHeader className="p-4 sm:p-5 lg:p-6">
-        <div className="flex items-center justify-between gap-4">
+      <CardHeader className="p-3 sm:p-4">
+        <div className="flex items-center justify-between gap-3">
           <div className="flex-1">
-            <CardTitle className="text-sm font-medium text-gray-600 mb-2">{title}</CardTitle>
-            <div className="text-2xl font-bold text-gray-900 tracking-tight sm:text-3xl">{value}</div>
-            <p className="text-xs text-gray-500 mt-2">{note}</p>
+            <CardTitle className="text-sm sm:text-base font-medium text-gray-600 mb-1">{title}</CardTitle>
+            <div className={`${title === "Total Spent" ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl"} font-bold text-gray-900 tracking-tight`}>{value}</div>
+            <p className="text-[11px] text-gray-500 mt-1">{note}</p>
           </div>
-          <div className={`p-3 bg-gradient-to-br ${color} rounded-lg flex-shrink-0`}>
+          <div className={`flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${color} flex-shrink-0`}>
             <Icon className="h-5 w-5 text-white" />
           </div>
         </div>

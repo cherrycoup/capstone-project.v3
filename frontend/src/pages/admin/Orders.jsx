@@ -172,7 +172,7 @@ export default function Orders() {
 
       <Card>
         <CardContent className="flex min-h-24 items-center p-4">
-          <div className="mx-auto grid w-full max-w-6xl items-center gap-3 md:grid-cols-[minmax(0,1fr)_12rem]">
+          <div className="mx-auto grid w-full max-w-6xl items-center gap-3 pt-5 md:grid-cols-[minmax(0,1fr)_12rem]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
@@ -203,49 +203,49 @@ export default function Orders() {
         <CardHeader>
           <CardTitle>All Orders ({filteredOrders.length})</CardTitle>
         </CardHeader>
+        <div
+          ref={topScrollRef}
+          className="mb-2 overflow-x-auto border-b border-slate-200"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <div style={{ width: tableScrollWidth, minHeight: 8 }} />
+        </div>
         <CardContent>
           <div className="overflow-hidden">
-            <div
-              ref={topScrollRef}
-              className="mb-2 overflow-x-auto"
-              style={{ WebkitOverflowScrolling: "touch" }}
-            >
-              <div style={{ width: tableScrollWidth, height: 1 }} />
-            </div>
             <div className="overflow-x-auto" ref={bottomScrollRef}>
-              <table ref={tableRef} className="w-full">
+              <table ref={tableRef} className="min-w-[1200px] w-full table-auto">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4">Order ID</th>
-                    <th className="text-left py-3 px-4">Customer</th>
-                    <th className="text-left py-3 px-4">Type</th>
-                    <th className="text-left py-3 px-4 hidden md:table-cell">Date</th>
-                    <th className="text-left py-3 px-4">Amount</th>
-                    <th className="text-left py-3 px-4">Payment</th>
-                    <th className="text-left py-3 px-4">Reference</th>
-                    <th className="text-left py-3 px-4">Status</th>
-                    <th className="text-left py-3 px-4">Actions</th>
+                    <th className="min-w-[13rem] whitespace-nowrap text-left py-3 px-4">Order ID</th>
+                    <th className="min-w-[14rem] whitespace-nowrap text-left py-3 px-4">Customer</th>
+                    <th className="min-w-[10rem] whitespace-nowrap text-left py-3 px-4">Type</th>
+                    <th className="min-w-[12rem] whitespace-nowrap text-left py-3 px-4 hidden md:table-cell">Date</th>
+                    <th className="min-w-[10rem] whitespace-nowrap text-left py-3 px-4">Amount</th>
+                    <th className="min-w-[14rem] whitespace-nowrap text-left py-3 px-4">Payment</th>
+                    <th className="min-w-[12rem] whitespace-nowrap text-left py-3 px-4">Reference</th>
+                    <th className="min-w-[10rem] whitespace-nowrap text-left py-3 px-4">Status</th>
+                    <th className="min-w-[8rem] whitespace-nowrap text-left py-3 px-4">Actions</th>
                   </tr>
                 </thead>
               <tbody>
                 {filteredOrders.map((order) => (
                   <tr key={order._id} className="border-b last:border-0">
-                    <td className="py-3 px-4">{order.orderId || order._id}</td>
-                    <td className="py-3 px-4">
+                    <td className="min-w-[13rem] whitespace-nowrap py-3 px-4">{order.orderId || order._id}</td>
+                    <td className="min-w-[14rem] py-3 px-4">
                       <div>
-                        <p>{order.customerId?.name || order.fullName || "Guest"}</p>
-                        <p className="text-xs text-gray-500 hidden sm:block">
+                        <p className="whitespace-nowrap overflow-hidden text-ellipsis">{order.customerId?.name || order.fullName || "Guest"}</p>
+                        <p className="text-xs text-gray-500 hidden sm:block truncate">
                           {order.customerId?.contactInfo?.email || order.email || order.contactNumber}
                         </p>
                       </div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="min-w-[10rem] whitespace-nowrap py-3 px-4">
                       <Badge variant="outline">{getOrderTypeLabel(order)}</Badge>
                     </td>
-                    <td className="py-3 px-4 hidden md:table-cell">
+                    <td className="min-w-[12rem] whitespace-nowrap py-3 px-4 hidden md:table-cell">
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="min-w-[10rem] whitespace-nowrap py-3 px-4">
                       <div className="space-y-1">
                         <span className={order.membershipDiscountAmount > 0 ? "font-semibold text-green-700" : "font-semibold text-slate-900"}>
                           {formatCurrency(order.total)}
@@ -257,25 +257,25 @@ export default function Orders() {
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="flex flex-col gap-1">
-                        <Badge variant="outline">{order.paymentMethod}</Badge>
+                    <td className="min-w-[14rem] py-3 px-4">
+                      <div className="flex flex-col gap-1 truncate">
+                        <Badge variant="outline" className="truncate">{order.paymentMethod}</Badge>
                         <Badge className={paymentStatusColors[order.paymentStatus] || "bg-gray-100 text-gray-700"}>
                           {String(order.paymentStatus || "pending").replaceAll("_", " ")}
                         </Badge>
                       </div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="min-w-[12rem] whitespace-nowrap py-3 px-4">
                       {String(order.paymentMethod || "").toLowerCase().includes("gcash")
                         ? (order.referenceNumber || "N/A")
                         : "N/A"}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="min-w-[10rem] whitespace-nowrap py-3 px-4">
                       <Badge className={statusColors[order.status] || "bg-gray-100 text-gray-700"}>
                         {order.status}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="min-w-[8rem] whitespace-nowrap py-3 px-4">
                       <Button variant="ghost" size="sm" onClick={() => handleViewDetails(order)}>
                         <Eye className="w-4 h-4" />
                       </Button>
@@ -360,27 +360,30 @@ export default function Orders() {
                 <p className="text-sm text-gray-500">Delivery Address</p>
                 <p>{detailOrder.address}</p>
               </div>
-              {detailOrder.notes && (
-                <div>
-                  <p className="text-sm text-gray-500">Additional Information</p>
-                  <div className="text-sm text-gray-700 space-y-1">
-                    {detailOrder.orderType === 'membership' ? (
-                      <>
-                        {detailOrder.notes.includes('|') ? (
-                          <>
-                            <p>{detailOrder.notes.split('|')[0].trim()}</p>
-                            <p className="italic text-gray-600">{detailOrder.notes.split('|')[1].trim()}</p>
-                          </>
-                        ) : (
-                          <p>{detailOrder.notes}</p>
-                        )}
-                      </>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-sm font-medium text-slate-700">Customer Notes</p>
+                  <span className="text-xs uppercase tracking-[0.18em] text-slate-400">Info</span>
+                </div>
+                <div className="mt-3 text-sm leading-6 text-slate-700 space-y-2">
+                  {detailOrder.notes ? (
+                    detailOrder.orderType === 'membership' ? (
+                      detailOrder.notes.includes("|") ? (
+                        <>
+                          <p>{detailOrder.notes.split("|")[0].trim()}</p>
+                          <p className="italic text-gray-600">{detailOrder.notes.split("|")[1].trim()}</p>
+                        </>
+                      ) : (
+                        <p>{detailOrder.notes}</p>
+                      )
                     ) : (
                       <p className="whitespace-pre-wrap">{detailOrder.notes}</p>
-                    )}
-                  </div>
+                    )
+                  ) : (
+                    <p className="text-slate-500">No notes or additional customer information provided.</p>
+                  )}
                 </div>
-              )}
+              </div>
               <div className="border-t pt-4">
                 <p className="text-sm text-gray-500 mb-2">Order Items</p>
                 <div className="bg-gray-50 p-4 rounded-lg space-y-2">

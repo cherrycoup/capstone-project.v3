@@ -155,15 +155,15 @@ export default function ClientProducts() {
       </div>
 
       <Card>
-        <CardContent className="flex min-h-20 items-center px-4 py-3">
-          <div className="mx-auto grid w-full max-w-6xl items-center gap-3 md:grid-cols-[minmax(0,1fr)_200px]">
-            <div className="relative">
+        <CardContent className="flex min-h-20 items-center px-4 py-6">
+          <div className="mx-auto grid w-full max-w-6xl items-center gap-3 pt-5 md:grid-cols-[minmax(0,1fr)_200px]">
+            <div className="relative flex h-10 items-center">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                className="h-10 pl-10"
+                className="h-10 pl-10 py-0 leading-none"
               />
             </div>
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>

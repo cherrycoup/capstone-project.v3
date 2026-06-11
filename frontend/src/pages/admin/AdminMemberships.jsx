@@ -160,7 +160,7 @@ export default function AdminMemberships() {
       </div>
 
       <div className="mb-4 flex min-h-24 items-center rounded-lg bg-white p-4 shadow-sm">
-        <div className="mx-auto grid w-full max-w-6xl items-center gap-3 md:grid-cols-[minmax(0,1fr)_180px_auto]">
+        <div className="mx-auto grid w-full max-w-6xl items-center gap-3 pt-5 md:grid-cols-[minmax(0,1fr)_180px_auto]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
@@ -311,7 +311,7 @@ function MembershipStat({ title, value, icon }) {
         <div className="flex w-full items-center justify-between gap-4">
           <div className="min-w-0">
             <div className="text-sm text-slate-500">{title}</div>
-            <div className="mt-3 break-words text-3xl text-slate-900">{value}</div>
+            <div className="mt-3 break-words text-3xl font-bold text-slate-900">{value}</div>
           </div>
           <div className="shrink-0">
             {icon}
