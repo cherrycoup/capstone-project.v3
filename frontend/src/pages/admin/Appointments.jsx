@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AlertCircle, Calendar as CalendarIcon, Clock, Mail, MapPin, Phone, UserRound, Wrench } from "lucide-react";
+import { AlertCircle, Calendar as CalendarIcon, CheckCircle, Clock, Mail, MapPin, Phone, Wrench } from "lucide-react";
 import { Alert, AlertDescription } from "../../components/ui/alert.jsx";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
@@ -178,17 +178,33 @@ export default function Appointments() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat title="Today's Appointments" value={todayAppointments.length} />
-        <Stat title="Upcoming" value={upcomingAppointments.length} />
-        <Stat title="Pending" value={appointmentsList.filter((a) => a.status === "Scheduled").length} />
-        <Stat title="Completed" value={appointmentsList.filter((a) => a.status === "Completed").length} />
+        <Stat
+          title="Today's Appointments"
+          value={todayAppointments.length}
+          icon={<CalendarIcon className="h-8 w-8 text-blue-600" />}
+        />
+        <Stat
+          title="Upcoming"
+          value={upcomingAppointments.length}
+          icon={<Clock className="h-8 w-8 text-slate-500" />}
+        />
+        <Stat
+          title="Pending"
+          value={appointmentsList.filter((a) => a.status === "Scheduled").length}
+          icon={<AlertCircle className="h-8 w-8 text-amber-600" />}
+        />
+        <Stat
+          title="Completed"
+          value={appointmentsList.filter((a) => a.status === "Completed").length}
+          icon={<CheckCircle className="h-8 w-8 text-green-600" />}
+        />
       </div>
 
       {todayReminderAppointments.length > 0 && (
         <div className="rounded-3xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
           <p className="text-sm font-semibold">Reminder</p>
           <p className="mt-1 text-base">
-            You have {todayReminderAppointments.length} unconfirmed appointment{todayReminderAppointments.length > 1 ? "s" : ""} today.
+            You have {todayReminderAppointments.length} appointment{todayReminderAppointments.length > 1 ? "s" : ""} scheduled for today.
           </p>
         </div>
       )}
@@ -442,12 +458,17 @@ export default function Appointments() {
   );
 }
 
-function Stat({ title, value }) {
+function Stat({ title, value, icon }) {
   return (
     <Card>
       <CardContent className="p-6">
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-3xl mt-2">{value}</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm text-gray-500">{title}</p>
+            <p className="text-3xl mt-2 text-slate-900">{value}</p>
+          </div>
+          <div>{icon}</div>
+        </div>
       </CardContent>
     </Card>
   );

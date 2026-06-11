@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Mail, Calendar, User, Trash2 } from 'lucide-react';
+import { Mail, Calendar, User, Trash2, Users, UserCheck, UserX } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import RoleEditModal from '../../components/admin/RoleEditModal';
 import { customersAPI, membershipAPI } from '../../utils/api';
@@ -155,16 +155,31 @@ export default function AdminMemberships() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-sm text-slate-500">ACTIVE</div>
-          <div className="text-2xl font-bold text-green-600">{members}</div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm text-slate-500">Active</div>
+              <div className="text-3xl text-slate-900">{members}</div>
+            </div>
+            <UserCheck className="h-8 w-8 text-green-600" />
+          </div>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-sm text-slate-500">GUESTS</div>
-          <div className="text-2xl font-bold">{guests}</div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm text-slate-500">Guests</div>
+              <div className="text-3xl text-slate-900">{guests}</div>
+            </div>
+            <Users className="h-8 w-8 text-blue-600" />
+          </div>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-sm">
-          <div className="text-sm text-slate-500">CANCELLED</div>
-          <div className="text-2xl font-bold text-rose-600">{stats.cancelled || 0}</div>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-sm text-slate-500">Cancelled</div>
+              <div className="text-3xl text-slate-900">{stats.cancelled || 0}</div>
+            </div>
+            <UserX className="h-8 w-8 text-rose-600" />
+          </div>
         </div>
       </div>
 
