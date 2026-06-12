@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, CalendarCheck, CreditCard, DollarSign, Download, ShoppingCart, TrendingUp, Users } from "lucide-react";
+import { AlertTriangle, BadgeDollarSign, CalendarCheck, CreditCard, Download, ShoppingCart, TrendingUp, Users } from "lucide-react";
 import { Button } from "../../components/ui/button.jsx";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card.jsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog.jsx";
@@ -231,12 +231,13 @@ export default function Reports() {
   const comparison = report?.comparison || {};
   const allTime = report?.allTime || {};
   const revenueTrend = report?.charts?.revenueTrend || [];
-  const categoryData = report?.charts?.categorySales?.length
-    ? report.charts.categorySales
-    : [{ category: "No sales", sales: 0 }];
+  const categoryData = report?.charts?.categorySales || [];
   const productPerformance = report?.charts?.topProducts || [];
   const statusBreakdown = report?.charts?.statusBreakdown || [];
   const paymentBreakdown = report?.charts?.paymentBreakdown || [];
+  const paymentMethodCount = paymentBreakdown.filter(
+    (payment) => payment.orders > 0 && payment.method && payment.method !== "Unknown"
+  ).length;
   const appointmentStatusBreakdown = report?.charts?.appointmentStatusBreakdown || [];
   const inventoryAlerts = report?.inventoryAlerts || [];
   const customerMetrics = [
@@ -283,7 +284,7 @@ export default function Reports() {
     <div className="space-y-6 p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl mb-2">Reports & Analytics</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Reports & Analytics</h1>
           <p className="text-gray-500">
             Live reports for {report?.period?.label || "the selected period"}
             {lastUpdated ? `, updated ${lastUpdated.toLocaleTimeString()}` : ""}
@@ -295,7 +296,7 @@ export default function Reports() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="last7">Last 7 days</SelectItem>
               <SelectItem value="monthly">Monthly</SelectItem>
             </SelectContent>
           </Select>
@@ -335,8 +336,9 @@ export default function Reports() {
               title="Total Revenue"
               value={money(metrics.totalRevenue)}
               note={delta(comparison.revenue)}
-              icon={DollarSign}
+              icon={BadgeDollarSign}
               color="text-green-600"
+              bg="bg-green-50"
             />
             <Metric
               title="Total Orders"
@@ -344,6 +346,7 @@ export default function Reports() {
               note={delta(comparison.orders)}
               icon={ShoppingCart}
               color="text-blue-600"
+              bg="bg-blue-50"
             />
             <Metric
               title="New Customers"
@@ -351,6 +354,7 @@ export default function Reports() {
               note={delta(comparison.newCustomers)}
               icon={Users}
               color="text-purple-600"
+              bg="bg-purple-50"
             />
             <Metric
               title="Avg Order Value"
@@ -358,6 +362,7 @@ export default function Reports() {
               note={delta(comparison.avgOrderValue)}
               icon={TrendingUp}
               color="text-orange-600"
+              bg="bg-orange-50"
             />
             <Metric
               title="Low Stock"
@@ -365,6 +370,7 @@ export default function Reports() {
               note={`${number(allTime.inventoryItems)} inventory items`}
               icon={AlertTriangle}
               color="text-red-600"
+              bg="bg-red-50"
             />
             <Metric
               title="Appointments"
@@ -372,13 +378,15 @@ export default function Reports() {
               note={`Within ${report?.period?.label || "period"}`}
               icon={CalendarCheck}
               color="text-teal-600"
+              bg="bg-teal-50"
             />
             <Metric
               title="Payment Mix"
-              value={number(paymentBreakdown.length)}
-              note="Active payment methods"
+              value={number(paymentMethodCount)}
+              note="Unique active payment methods"
               icon={CreditCard}
               color="text-indigo-600"
+              bg="bg-indigo-50"
             />
           </div>
 
@@ -397,7 +405,11 @@ export default function Reports() {
                 <CardTitle>Sales by Category</CardTitle>
               </CardHeader>
               <CardContent>
-                <SimpleBarChart data={categoryData} xKey="category" yKey="sales" color="#3b82f6" />
+                {categoryData.length ? (
+                  <SimpleBarChart data={categoryData} xKey="category" yKey="sales" color="#3b82f6" />
+                ) : (
+                  <p className="py-8 text-center text-gray-500">No category sales for this period.</p>
+                )}
               </CardContent>
             </Card>
 
@@ -406,22 +418,23 @@ export default function Reports() {
                 <CardTitle>Top Products</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {productPerformance.map((product, index) => (
-                    <div key={product.product} className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                          {index + 1}
+                <div className="space-y-4 divide-y divide-gray-200">
+                  {productPerformance.length ? (
+                    productPerformance.map((product, index) => (
+                      <div key={product.product} className="flex items-center justify-between gap-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-semibold">
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{product.product}</p>
+                            <p className="text-sm text-gray-500">{number(product.sold)} units sold</p>
+                          </div>
                         </div>
-                        <div>
-                          <p>{product.product}</p>
-                          <p className="text-sm text-gray-500">{number(product.sold)} units sold</p>
-                        </div>
+                        <p className="text-sm font-semibold text-gray-900">{money(product.revenue)}</p>
                       </div>
-                      <p>{money(product.revenue)}</p>
-                    </div>
-                  ))}
-                  {productPerformance.length === 0 && (
+                    ))
+                  ) : (
                     <p className="py-8 text-center text-gray-500">No completed product sales for this period.</p>
                   )}
                 </div>
@@ -437,9 +450,9 @@ export default function Reports() {
               <CardContent>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {customerMetrics.map((metric) => (
-                    <div key={metric.metric} className="p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-500 mb-2">{metric.metric}</p>
-                      <p className="text-2xl mb-1">{metric.value}</p>
+                    <div key={metric.metric} className="p-5 bg-slate-50 rounded-2xl border border-gray-200">
+                      <p className="text-sm text-gray-500 mb-3">{metric.metric}</p>
+                      <p className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-1">{metric.value}</p>
                       <p className="text-sm text-green-600">{metric.change}</p>
                     </div>
                   ))}
@@ -468,16 +481,17 @@ export default function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {paymentBreakdown.map((payment) => (
-                    <div key={payment.method} className="flex items-center justify-between gap-4">
-                      <div>
-                        <p>{payment.method}</p>
-                        <p className="text-sm text-gray-500">{number(payment.orders)} orders</p>
+                  {paymentBreakdown.length ? (
+                    paymentBreakdown.map((payment) => (
+                      <div key={payment.method} className="flex items-center justify-between gap-4 py-3 border-b border-gray-200 last:border-b-0">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{payment.method}</p>
+                          <p className="text-sm text-gray-500">{number(payment.orders)} orders</p>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-900">{money(payment.revenue)}</p>
                       </div>
-                      <p>{money(payment.revenue)}</p>
-                    </div>
-                  ))}
-                  {paymentBreakdown.length === 0 && (
+                    ))
+                  ) : (
                     <p className="py-6 text-center text-gray-500">No payments for this period.</p>
                   )}
                 </div>
@@ -503,18 +517,19 @@ export default function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {inventoryAlerts.map((product) => (
-                    <div key={product._id} className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="truncate">{product.productName}</p>
-                        <p className="text-sm text-gray-500 truncate">{product.category}</p>
+                  {inventoryAlerts.length ? (
+                    inventoryAlerts.map((product) => (
+                      <div key={product._id} className="flex items-center justify-between gap-4 py-3 border-b border-gray-200 last:border-b-0">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{product.productName}</p>
+                          <p className="text-sm text-gray-500 truncate">{product.category}</p>
+                        </div>
+                        <p className="text-sm font-semibold text-red-600">
+                          {product.stockLevel}/{product.minStock}
+                        </p>
                       </div>
-                      <p className="text-sm text-red-600">
-                        {product.stockLevel}/{product.minStock}
-                      </p>
-                    </div>
-                  ))}
-                  {inventoryAlerts.length === 0 && (
+                    ))
+                  ) : (
                     <p className="py-6 text-center text-gray-500">No low stock products.</p>
                   )}
                 </div>
@@ -602,18 +617,37 @@ export default function Reports() {
   );
 }
 
-function Metric({ title, value, note, icon, color }) {
+function Metric({ title, value, note, icon, color, bg }) {
   const Icon = icon;
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-gray-500">{title}</p>
-            <p className="text-2xl mt-2">{value}</p>
-            <p className="text-sm text-green-600 mt-1">{note}</p>
+      <CardContent className="!pt-5 pb-6 px-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-base sm:text-lg font-semibold text-gray-600">{title}</p>
+            <p className="mt-3 break-words text-xl sm:text-2xl font-bold">
+              {typeof value === "string" && value.startsWith("PHP ") ? (
+                <span className="inline-flex items-baseline gap-1">
+                  <span className="text-sm text-gray-500 font-medium">PHP</span>
+                  <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                    {String(value).replace(/^PHP\s*/, "")}
+                  </span>
+                </span>
+              ) : (
+                value
+              )}
+            </p>
+            <p className="mt-2 text-sm text-green-600">{note}</p>
           </div>
-          <Icon className={`w-8 h-8 ${color}`} />
+          <div className={`rounded-lg ${bg} p-3`}>
+            {title === "Total Revenue" ? (
+              <span className="inline-flex h-5 w-5 items-center justify-center text-orange-600 text-base font-bold leading-none">
+                ₱
+              </span>
+            ) : (
+              <Icon className={`w-5 h-5 ${color}`} />
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

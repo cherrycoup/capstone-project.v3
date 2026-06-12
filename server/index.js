@@ -5,6 +5,8 @@ import path from "path"
 import { fileURLToPath } from "url"
 import connectDb from "./db/connect.js"
 import dotenv from "dotenv"
+import helmet from "helmet"
+import morgan from "morgan"
 import { createRateLimiter, sanitizeInput, securityHeaders } from "./middleware/security.js"
 
 // Routes
@@ -19,11 +21,13 @@ import reportsRoutes from "./routes/reports.js"
 import promotionsRoutes from "./routes/promotions.js"
 import membershipsRoutes from "./routes/memberships.js"
 import mailRoutes from "./routes/mail.js"
+import faqRoutes from "./routes/faqs.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const projectRoot = path.resolve(__dirname, "..")
 
+// Load environment variables: prefer project root, then server-specific overrides
 dotenv.config({ path: path.join(projectRoot, ".env") })
 dotenv.config({ path: path.join(__dirname, ".env") })
 dotenv.config({ path: path.join(__dirname, ".env.local"), override: true })
@@ -47,6 +51,8 @@ const isAllowedLocalDevOrigin = (origin) => /^http:\/\/(localhost|127\.0\.0\.1):
 
 app.set("trust proxy", 1)
 app.disable("x-powered-by")
+// Standard security headers via helmet, keep custom headers afterwards
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }))
 app.use(securityHeaders)
 app.use(cors({
     origin(origin, callback) {
@@ -65,14 +71,21 @@ app.use(cors({
 }))
 app.use(express.json({ limit: "6mb" }))
 app.use(sanitizeInput)
-app.use(createRateLimiter())
+
+// HTTP request logging
+app.use(isDevelopment ? morgan("dev") : morgan("combined"))
 
 // Auth routes (public). Keep auth attempts on a tighter limiter than normal API traffic.
-app.use('/api/auth', createRateLimiter({
+const authRateLimitMax = Number(process.env.AUTH_RATE_LIMIT_MAX || (isDevelopment ? 1000 : 120));
+const authRateLimiter = createRateLimiter({
     windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
-    max: Number(process.env.AUTH_RATE_LIMIT_MAX || 30),
+    max: authRateLimitMax,
     keyPrefix: "auth-rate-limit",
-}), authRoutes)
+});
+app.use('/api/auth', authRateLimiter, authRoutes)
+
+// Apply default rate limiting for all other routes after auth routes so auth requests use their dedicated limit.
+app.use(createRateLimiter())
 
 // Route-level authorization is applied inside each route module.
 app.use('/api/appointments', appointmentsRoutes)
@@ -87,6 +100,7 @@ app.use('/api/memberships', membershipsRoutes)
 app.use('/api/mail', mailRoutes)
 
 // Health check route
+app.use('/api/faqs', faqRoutes)
 app.get('/api/health', (req, res) => {
     res.status(200).json({ success: true, message: "Server is running" })
 })
@@ -101,6 +115,13 @@ app.use((error, req, res, next) => {
         return res.status(403).json({ success: false, message: "Origin not allowed" })
     }
 
+    // Avoid leaking stack traces in production
+    if (isDevelopment) {
+        console.error("Unhandled error:", error)
+    } else {
+        console.error("Unhandled error:", error && error.message ? error.message : error)
+    }
+
     return res.status(500).json({ success: false, message: "Internal server error" })
 })
 
@@ -109,7 +130,7 @@ const port = process.env.PORT || 5000
 const startServer = async () => {
     await connectDb()
     app.listen(port, () => {
-        console.log("server is running on http://localhost:" + port);
+        console.log(`Server is running on http://localhost:${port}`)
     })
 }
 

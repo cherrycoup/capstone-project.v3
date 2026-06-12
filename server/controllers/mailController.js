@@ -163,10 +163,10 @@ export const requestPasswordReset = async (req, res) => {
         }
 
         const account = await findAccountByEmail(email);
+
         const resetToken = crypto.randomBytes(32).toString("hex");
 
         if (account) {
-            await createEmailToken({
                 email,
                 purpose: "password_reset",
                 token: resetToken,
@@ -178,13 +178,20 @@ export const requestPasswordReset = async (req, res) => {
                 ? `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(email)}`
                 : "";
 
-            await sendPasswordResetEmail({
+            const emailResult = await sendPasswordResetEmail({
                 to: email,
                 name: account.name,
                 resetToken,
                 resetUrl,
                 expiresInMinutes: RESET_TTL_MINUTES,
             });
+
+            if (!emailResult) {
+                return res.status(503).json({
+                    success: false,
+                    message: "Password reset email could not be sent. Check SMTP configuration and server logs.",
+                });
+            }
         }
 
         return res.status(200).json({
@@ -192,14 +199,16 @@ export const requestPasswordReset = async (req, res) => {
             message: "If the email is registered, a password reset email has been sent",
         });
     } catch (error) {
-        console.error("Request password reset error:", error);
+        console.error("[PASSWORD_RESET] Request failed:", {
+            message: error?.message,
+            stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        });
         return res.status(500).json({
             success: false,
             message: "Failed to send password reset email",
         });
     }
 };
-
 export const resetPassword = async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);

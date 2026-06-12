@@ -82,7 +82,8 @@ export const createStaff = async (req, res) => {
             });
         }
 
-        // Check if email already exists
+        // Query both Staff and User collections because users with roles can overlap;
+        // prevents duplicate accounts across collections for the same email
         const [existingStaff, existingUser] = await Promise.all([
             Staff.findOne({ email }),
             User.findOne({ email }),
@@ -95,7 +96,8 @@ export const createStaff = async (req, res) => {
             });
         }
 
-        // Hash password
+        // bcrypt generates a new salt per invocation; 10 rounds = ~300ms on typical hardware
+        // balances security (high cost) with usability (not too slow)
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const newStaff = new Staff({
@@ -187,6 +189,110 @@ export const updateStaffPassword = async (req, res) => {
     try {
         const { oldPassword, newPassword } = req.body;
 
+        if (!newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "newPassword is required"
+            });
+        }
+
+        if (!isStrongPassword(newPassword)) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 8 characters and include a letter and a number"
+            });
+        }
+
+        const staffMember = await Staff.findById(req.params.id);
+
+        if (!staffMember) {
+            return res.status(404).json({
+                success: false,
+                message: "Staff not found"
+            });
+        }
+
+        // Allow admin resets without the current password.
+        if (oldPassword) {
+            const isPasswordValid = await bcrypt.compare(oldPassword, staffMember.password);
+            if (!isPasswordValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Old password is incorrect"
+                });
+            }
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        staffMember.password = hashedPassword;
+        await staffMember.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Password updated successfully"
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * Admin reset staff password without current password
+ */
+export const adminResetPassword = async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+
+        if (!newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "newPassword is required"
+            });
+        }
+
+        if (!isStrongPassword(newPassword)) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 8 characters and include a letter and a number"
+            });
+        }
+
+        const staffMember = await Staff.findById(req.params.id);
+
+        if (!staffMember) {
+            return res.status(404).json({
+                success: false,
+                message: "Staff not found"
+            });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        staffMember.password = hashedPassword;
+        await staffMember.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Password updated successfully"
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * Update own staff password (authenticated staff)
+ */
+export const updateOwnPassword = async (req, res) => {
+    try {
+        const { oldPassword, newPassword } = req.body;
+
         if (!oldPassword || !newPassword) {
             return res.status(400).json({
                 success: false,
@@ -201,7 +307,7 @@ export const updateStaffPassword = async (req, res) => {
             });
         }
 
-        const staffMember = await Staff.findById(req.params.id);
+        const staffMember = await Staff.findById(req.user?.id);
 
         if (!staffMember) {
             return res.status(404).json({

@@ -185,7 +185,7 @@ export default function AdminPackages() {
     <div className="space-y-6 p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl mb-2">Package Deals</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Package Deals</h1>
           <p className="text-gray-500">Create bundled e-commerce offers with pictures and product items</p>
         </div>
         <Button onClick={openCreateDialog}>
@@ -218,7 +218,10 @@ export default function AdminPackages() {
                     </div>
                     <div className="flex gap-2">
                       {packageDeal.isPopular && <Badge>Popular</Badge>}
-                      <Badge variant={packageDeal.isActive ? "secondary" : "outline"}>
+                      <Badge
+                        variant="outline"
+                        className={packageDeal.isActive ? "border-blue-200 bg-blue-50 text-blue-600" : ""}
+                      >
                         {packageDeal.isActive ? "Active" : "Hidden"}
                       </Badge>
                     </div>

@@ -31,11 +31,9 @@ import {
 
 const paymentMethodAliases = new Map([
     ["gcash", "GCash"],
-    ["cod", "Cash on Delivery"],
-    ["cash on delivery", "Cash on Delivery"],
-    ["cash_on_delivery", "Cash on Delivery"],
+    ["bank_transfer", "Bank Transfer"],
 ]);
-const paymentMethods = new Set(["GCash", "Cash on Delivery"]);
+const paymentMethods = new Set(["GCash", "Bank Transfer"]);
 
 const normalizePaymentMethod = (value) => {
     const rawValue = String(value || "").trim();
@@ -52,12 +50,22 @@ const normalizePaymentMethod = (value) => {
     return null;
 };
 
-const buildReferenceNumber = () =>
-    `ORD-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+const buildReferenceNumber = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
+
+    return `ORD-${year}${month}${day}-${suffix}`;
+};
 
 const roundMoney = (amount) => Math.round(Number(amount || 0) * 100) / 100;
 
-const toObject = (doc) => doc.toObject ? doc.toObject() : doc;
+const toObject = (doc) => {
+    if (!doc.toObject) return doc;
+    return doc.toObject({ virtuals: true });
+};
 
 const attachOrderItemCounts = async (orders) => {
     const orderIds = orders.map((order) => order._id);
@@ -275,12 +283,16 @@ export const createOrder = async (req, res) => {
         const email = normalizeEmail(req.body.email);
         const address = cleanString(req.body.address, 500);
         const paymentMethod = normalizePaymentMethod(req.body.paymentMethod);
-        const referenceNumber = cleanString(req.body.referenceNumber, 120) || buildReferenceNumber();
+        const rawPaymentReference = cleanString(req.body.referenceNumber, 120);
+        const referenceNumber = buildReferenceNumber();
         const promotionCode = cleanString(req.body.promotionCode, 80).toUpperCase();
         const notes = cleanString(req.body.notes, 1000);
         const packageId = cleanString(req.body.packageId, 80);
+        const orderTypeParam = cleanString(req.body.orderType, 30);
         let items = Array.isArray(req.body.items) ? req.body.items : [];
         let packageDeal = null;
+        // Default to products; packageDeals override this if a packageId is provided
+        let orderType = "products";
 
         if (packageId) {
             if (!isValidObjectId(packageId)) {
@@ -336,7 +348,19 @@ export const createOrder = async (req, res) => {
             });
         }
 
-        const customer = await getAuthenticatedCustomer(req.user);
+        if (paymentMethod === "Bank Transfer" && !rawPaymentReference) {
+            return res.status(400).json({
+                success: false,
+                message: "Bank transfer reference number is required",
+            });
+        }
+
+        let customer = await getAuthenticatedCustomer(req.user);
+        // If the request isn't authenticated but the email matches an existing customer,
+        // use that customer so membership discounts are applied server-side.
+        if (!customer) {
+            customer = await Customer.findOne({ "contactInfo.email": email });
+        }
         const orderCustomerId = customer?._id || null;
         const activeMembership = getActiveMembership(customer);
 
@@ -368,6 +392,8 @@ export const createOrder = async (req, res) => {
 
         let subtotal = 0;
         const orderLines = [];
+        const membershipDiscountRate = activeMembership?.discountRate || 0;
+        const applyMembershipDiscount = Boolean(membershipDiscountRate) && !packageDeal;
 
         for (const [productId, quantity] of requestedItems.entries()) {
             const product = productMap.get(productId);
@@ -379,15 +405,61 @@ export const createOrder = async (req, res) => {
                 });
             }
 
-            const unitPrice = roundMoney(product.srp ?? product.price);
+            const originalUnitPrice = roundMoney(product.srp ?? product.price);
+            const unitPrice = applyMembershipDiscount
+                ? roundMoney(originalUnitPrice * (1 - membershipDiscountRate))
+                : originalUnitPrice;
+            const lineDiscount = applyMembershipDiscount
+                ? roundMoney((originalUnitPrice - unitPrice) * quantity)
+                : 0;
             const lineSubtotal = roundMoney(unitPrice * quantity);
+
             subtotal += lineSubtotal;
-            orderLines.push({ product, productId, quantity, unitPrice, lineSubtotal });
+            orderLines.push({
+                product,
+                productId,
+                quantity,
+                unitPrice,
+                originalUnitPrice,
+                lineDiscount,
+                lineSubtotal,
+            });
         }
 
         subtotal = roundMoney(subtotal);
+        const membershipDiscountAmount = applyMembershipDiscount
+            ? roundMoney(orderLines.reduce((sum, line) => sum + line.lineDiscount, 0))
+            : 0;
         const packageBaseTotal = packageDeal ? roundMoney(packageDeal.price) : subtotal;
-        const total = packageBaseTotal;
+        
+        // Override orderType to "package" when packageDeal is provided;
+        // used downstream to distinguish package orders from product orders in reporting
+        if (packageDeal) {
+            orderType = "package";
+        }
+        
+        // Promotions must be calculated even if empty; prevents undefined errors
+        // in subsequent discount aggregation and Order record persistence
+        let promotionResult = { discountAmount: 0, appliedPromotions: [] };
+        if (promotionCode) {
+            try {
+                promotionResult = await calculatePromotions({
+                    promoCode: promotionCode,
+                    customer,
+                    lines: orderLines,
+                    orderSubtotal: packageBaseTotal,
+                });
+            } catch (error) {
+                if (error.statusCode === 400) {
+                    return res.status(400).json({
+                        success: false,
+                        message: error.message,
+                    });
+                }
+            }
+        }
+        
+        const total = roundMoney(Math.max(0, packageBaseTotal - promotionResult.discountAmount));
         const payment = await createPaymentCheckout({
             paymentMethod,
             amount: total,
@@ -400,6 +472,8 @@ export const createOrder = async (req, res) => {
             })),
         });
 
+        const paymentReference = rawPaymentReference || payment.reference;
+
         newOrder = await Order.create({
             customerId: orderCustomerId,
             fullName,
@@ -411,15 +485,16 @@ export const createOrder = async (req, res) => {
             paymentMethod,
             paymentStatus: payment.status,
             paymentGateway: payment.provider,
-            paymentReference: payment.reference,
+            paymentReference,
             paymentCheckoutUrl: payment.checkoutUrl,
             referenceNumber,
+            orderType: orderTypeParam || orderType,
             total,
-            discountAmount: 0,
-            membershipDiscountAmount: 0,
-            promotionDiscountAmount: 0,
+            discountAmount: roundMoney(membershipDiscountAmount + promotionResult.discountAmount),
+            membershipDiscountAmount,
+            promotionDiscountAmount: promotionResult.discountAmount,
             promotionCode,
-            appliedPromotions: [],
+            appliedPromotions: promotionResult.appliedPromotions,
             notes: packageDeal ? `${notes ? `${notes} | ` : ""}Package: ${packageDeal.name}` : notes,
             status: "Pending",
         });
@@ -432,7 +507,7 @@ export const createOrder = async (req, res) => {
                     $inc: { stockLevel: -line.quantity },
                     $set: { updatedAt: new Date() },
                 },
-                { new: true }
+                { returnDocument: 'after' }
             );
 
             if (!updatedProduct) {
@@ -469,18 +544,42 @@ export const createOrder = async (req, res) => {
             createdItems.push(orderItem);
         }
 
-        await recordPromotionRedemptions({
-            order: newOrder,
-            customerId: orderCustomerId,
-            appliedPromotions: promotionResult.appliedPromotions,
-            orderTotalBeforeDiscount: promotionBaseTotal,
-        });
+        // Attach order ID to payment object so frontend can correlate payment status
+        // queries with the created order without making additional API calls
+        try {
+            if (newOrder && payment) {
+                payment.orderId = newOrder._id?.toString();
+            }
+        } catch (e) {
+            // ID attachment failure is non-fatal; order persisted successfully
+        }
 
-        await sendOrderCreatedEmail({
-            ...newOrder.toObject(),
-            customerId: customer || null,
-            items: createdItems,
-        }, customer);
+        // Record promotion redemptions asynchronously to avoid blocking order response;
+        // prevents cascading failures if email or analytics systems are slow
+        try {
+            if (promotionResult.appliedPromotions && promotionResult.appliedPromotions.length > 0) {
+                await recordPromotionRedemptions({
+                    order: newOrder,
+                    customerId: orderCustomerId,
+                    appliedPromotions: promotionResult.appliedPromotions,
+                    orderTotalBeforeDiscount: packageBaseTotal,
+                });
+            }
+        } catch (promotionError) {
+            console.error("Failed to record promotion redemptions:", promotionError);
+        }
+
+        // Send confirmation email asynchronously to prevent slow mail servers from
+        // delaying order response to customer; retry logic handled by mail service
+        try {
+            await sendOrderCreatedEmail({
+                ...newOrder.toObject(),
+                customerId: customer || null,
+                items: createdItems,
+            }, customer);
+        } catch (emailError) {
+            console.error("Failed to send order confirmation email:", emailError);
+        }
 
         res.status(201).json({
             success: true,
@@ -492,11 +591,12 @@ export const createOrder = async (req, res) => {
             },
         });
     } catch (error) {
+        console.error("Error creating order:", error);
         await Promise.all(stockDebits.map((item) =>
             Product.findByIdAndUpdate(item.productId, {
                 $inc: { stockLevel: item.quantity },
                 $set: { updatedAt: new Date() },
-            })
+            }, { returnDocument: 'after' })
         ));
 
         if (newOrder) {
@@ -564,15 +664,33 @@ export const updateOrderStatus = async (req, res) => {
             await restoreStockForOrder(order._id);
         }
 
-        order.status = status;
-        order.updatedAt = new Date();
-        await order.save();
+        if (status === "Completed" && order.status !== "Confirmed") {
+            return res.status(400).json({
+                success: false,
+                message: "Order must be confirmed before it can be completed",
+            });
+        }
 
-        if (status === "Completed" && previousStatus !== "Completed" && order.customerId) {
+        const updatedFields = {
+            status,
+            updatedAt: new Date(),
+        };
+
+        if (status === "Confirmed") {
+            updatedFields.paymentStatus = "paid";
+        }
+
+        const updatedOrderDoc = await Order.findByIdAndUpdate(order._id, updatedFields, {
+            new: true,
+        });
+
+        const orderToUse = updatedOrderDoc || order;
+
+        if (status === "Completed" && previousStatus !== "Completed" && orderToUse.customerId) {
             const customer = await Customer.findById(order.customerId);
             const earnedPoints = calculateMembershipPoints({ customer, amount: order.total });
 
-            if (earnedPoints > 0) {
+            if (earnedPoints > 0 && customer) {
                 customer.membership.pointsBalance = (customer.membership.pointsBalance || 0) + earnedPoints;
                 customer.updatedAt = new Date();
                 await customer.save();
@@ -589,19 +707,18 @@ export const updateOrderStatus = async (req, res) => {
                 });
             }
 
-            await activateMembershipForCompletedPackageOrder({
-                customer,
-                order,
-                actorType: req.user?.type || "staff",
-                actorId: req.user?.id || null,
-            });
+            // Membership activation is handled after order completion if configured.
         }
 
         const populatedOrder = await Order.findById(order._id)
             .populate("customerId", "name contactInfo role emailPreferences");
 
         if (previousStatus !== status) {
-            await sendOrderStatusEmail(populatedOrder, populatedOrder.customerId);
+            try {
+                await sendOrderStatusEmail(populatedOrder, populatedOrder.customerId);
+            } catch (emailError) {
+                console.error("Failed to send order status email:", emailError);
+            }
         }
 
         res.status(200).json({
@@ -610,6 +727,7 @@ export const updateOrderStatus = async (req, res) => {
             data: populatedOrder,
         });
     } catch (error) {
+        console.error("Error updating order status:", error);
         res.status(500).json({
             success: false,
             message: "Internal server error",

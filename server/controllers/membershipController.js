@@ -1,8 +1,20 @@
 import Customer from "../models/Customer.js";
 import MembershipHistory from "../models/MembershipHistory.js";
+import Order from "../models/Order.js";
+import PackageDeal from "../models/PackageDeal.js";
 import User from "../models/User.js";
 import { cleanString, isValidObjectId } from "../utils/validation.js";
 import { sendMembershipApprovalEmail } from "../utils/emailService.js";
+import { getExpiryDate, expireActiveMemberships } from "../utils/membership.js";
+
+const buildMembershipOrderReference = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const suffix = Array.from({ length: 3 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join("");
+    return `MEM-${year}${month}${day}-${suffix}`;
+};
 
 const getAuthenticatedAccount = async (tokenUser) => {
     const account = await User.findById(tokenUser?.id || tokenUser?._id);
@@ -31,7 +43,7 @@ const getCustomerForAccount = async (account) => {
  */
 export const applyForMembership = async (req, res) => {
     try {
-        const { fullName, email, phone, address, membershipType, additionalNotes } = req.body;
+        const { fullName, email, contactNumber, address, packageName, packageDealId, paymentMethod, referenceNumber, additionalInfo } = req.body;
         const account = await getAuthenticatedAccount(req.user);
 
         if (!account) {
@@ -42,7 +54,7 @@ export const applyForMembership = async (req, res) => {
         }
 
         // Validate required fields
-        if (!fullName || !email || !phone || !address || !membershipType) {
+        if (!fullName || !email || !contactNumber || !address || !packageName) {
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields"
@@ -57,42 +69,96 @@ export const applyForMembership = async (req, res) => {
                 name: cleanString(fullName, 120),
                 contactInfo: {
                     email: email.toLowerCase().trim(),
-                    phone: cleanString(phone, 30),
+                    phone: cleanString(contactNumber, 30),
                     address: cleanString(address, 500)
                 },
                 role: 'Guest',
                 membership: {
                     status: 'Pending',
-                    tier: membershipType,
-                    pointsBalance: 0,
-                    joinedAt: new Date()
-                }
+                    tier: cleanString(packageName, 160)
+                },
+                selectedPackageDeal: packageDealId || null,
+                entryPackage: cleanString(packageName, 160),
+                applicationNotes: `Applied for ${cleanString(packageName, 160)} membership`,
             });
         } else {
             customer.name = cleanString(fullName, 120);
-            customer.contactInfo.email = account.email;
-            customer.contactInfo.phone = cleanString(phone, 30);
+            customer.contactInfo.email = email.toLowerCase().trim();
+            customer.contactInfo.phone = cleanString(contactNumber, 30);
             customer.contactInfo.address = cleanString(address, 500);
             customer.role = customer.role === 'Member' ? 'Member' : 'Guest';
             customer.membership = {
                 status: 'Pending',
-                tier: membershipType,
-                pointsBalance: customer.membership?.pointsBalance || 0,
-                joinedAt: new Date()
+                tier: cleanString(packageName, 160)
             };
+            customer.selectedPackageDeal = packageDealId || null;
+            customer.entryPackage = cleanString(packageName, 160);
+            customer.applicationNotes = `Applied for ${cleanString(packageName, 160)} membership`;
         }
 
-        // Handle file upload if present
+        // Store payment information
+        customer.membershipPaymentInfo = {
+            packageDealId,
+            paymentMethod: paymentMethod || '',
+            referenceNumber: referenceNumber || '',
+            appliedAt: new Date()
+        };
+
+        // File uploads require manual verification; store path for staff to review
+        // during application approval process
         if (req.file) {
             // Store the file path or URL
             customer.idDocument = req.file.path || `uploads/${req.file.filename}`;
         }
 
-        // Store additional metadata
-        customer.applicationNotes = additionalNotes || '';
+        // Store application metadata
         customer.applicationSubmittedAt = new Date();
 
         await customer.save();
+
+        // Create a membership order record so the application appears in order management
+        let membershipOrder = null;
+        try {
+            let packagePrice = 0;
+            let packageDeal = null;
+
+            if (packageDealId && isValidObjectId(packageDealId)) {
+                packageDeal = await PackageDeal.findById(packageDealId);
+                packagePrice = packageDeal?.price || 0;
+            }
+
+            const orderReference = referenceNumber || buildMembershipOrderReference();
+            const orderNotes = additionalInfo
+                ? `Package: ${packageName} | Additional Info: ${additionalInfo}`
+                : `Package: ${packageName}`;
+
+            membershipOrder = await Order.create({
+                customerId: customer._id,
+                fullName: customer.name,
+                contactNumber: customer.contactInfo.phone,
+                email: customer.contactInfo.email,
+                address: customer.contactInfo.address || '',
+                packageDealId: packageDeal?._id || null,
+                packageName,
+                paymentMethod: paymentMethod || '',
+                paymentStatus: 'pending',
+                paymentGateway: paymentMethod === 'GCash' ? 'gcash' : paymentMethod === 'Bank Transfer' ? 'bank_transfer' : 'manual',
+                paymentReference: orderReference,
+                paymentCheckoutUrl: '',
+                referenceNumber: orderReference,
+                orderType: 'membership',
+                total: packagePrice,
+                discountAmount: 0,
+                membershipDiscountAmount: 0,
+                promotionDiscountAmount: 0,
+                promotionCode: '',
+                appliedPromotions: [],
+                notes: orderNotes,
+                status: 'Pending',
+            });
+        } catch (orderError) {
+            console.error('Failed to create membership order:', orderError);
+        }
 
         if (String(account.customerId || "") !== String(customer._id)) {
             account.customerId = customer._id;
@@ -106,10 +172,10 @@ export const applyForMembership = async (req, res) => {
             previousStatus: '',
             newStatus: 'Pending',
             previousTier: '',
-            newTier: membershipType,
+            newTier: packageName,
             actorType: 'customer',
             actorId: account._id,
-            notes: `Applied for ${membershipType} membership`
+            notes: `Applied for ${packageName} membership via application form`
         });
 
         res.status(201).json({
@@ -118,7 +184,14 @@ export const applyForMembership = async (req, res) => {
             data: {
                 customerId: customer._id,
                 status: 'Pending',
-                tier: membershipType
+                tier: packageName,
+                order: membershipOrder ? {
+                    id: membershipOrder._id,
+                    referenceNumber: membershipOrder.referenceNumber,
+                    paymentMethod: membershipOrder.paymentMethod,
+                    paymentStatus: membershipOrder.paymentStatus,
+                    total: membershipOrder.total,
+                } : null
             }
         });
     } catch (error) {
@@ -145,10 +218,20 @@ export const getMyMembership = async (req, res) => {
             });
         }
 
+        const selectedPackageDeal = customer.selectedPackageDeal
+            ? await PackageDeal.findById(customer.selectedPackageDeal).select('name price description')
+            : null;
+
         res.status(200).json({
             success: true,
             data: {
-                membership: customer.membership
+                membership: customer.membership,
+                selectedPackageDeal,
+                entryPackage: customer.entryPackage,
+                membershipPaymentInfo: customer.membershipPaymentInfo,
+                applicationSubmittedAt: customer.applicationSubmittedAt,
+                applicationNotes: customer.applicationNotes,
+                status: customer.membership.status,
             }
         });
     } catch (error) {
@@ -199,10 +282,17 @@ export const getMyMembershipHistory = async (req, res) => {
  */
 export const getAllApplications = async (req, res) => {
     try {
+        await expireActiveMemberships();
         const { status, tier, search } = req.query;
         const filter = {};
 
-        if (status) filter['membership.status'] = status;
+        if (status) {
+            filter['membership.status'] = status;
+        } else {
+            // Hide customers without an active or pending membership application by default
+            filter['membership.status'] = { $ne: 'None' };
+        }
+
         if (tier) filter['membership.tier'] = tier;
 
         if (search) {
@@ -237,6 +327,7 @@ export const getAllApplications = async (req, res) => {
  */
 export const getApplicationById = async (req, res) => {
     try {
+        await expireActiveMemberships();
         const { applicationId } = req.params;
 
         if (!isValidObjectId(applicationId)) {
@@ -303,15 +394,11 @@ export const approveApplication = async (req, res) => {
         customer.membership.tier = tier || customer.membership.tier;
         customer.membership.approvedAt = new Date();
 
-        if (!customer.membership.joinedAt) {
-            customer.membership.joinedAt = new Date();
-        }
-
-        // Set expiration date (1 year from approval)
-        const expiresAt = new Date();
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-        customer.membership.expiresAt = expiresAt;
-
+        const activationDate = customer.membership.joinedAt
+            ? new Date(customer.membership.joinedAt)
+            : new Date();
+        customer.membership.joinedAt = customer.membership.joinedAt || activationDate;
+        customer.membership.expiresAt = getExpiryDate(activationDate);
         customer.role = 'Member';
 
         await customer.save();
@@ -395,8 +482,6 @@ export const rejectApplication = async (req, res) => {
             notes: reason || 'Application rejected'
         });
 
-        // TODO: Send email notification to customer
-
         res.status(200).json({
             success: true,
             message: 'Application rejected',
@@ -438,8 +523,7 @@ export const renewMembership = async (req, res) => {
             });
         }
 
-        const expiresAt = new Date();
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+        const expiresAt = getExpiryDate(new Date());
 
         customer.membership.expiresAt = expiresAt;
         customer.membership.renewalCount = (customer.membership.renewalCount || 0) + 1;
@@ -605,6 +689,7 @@ export const suspendMembership = async (req, res) => {
  */
 export const getMembershipStats = async (req, res) => {
     try {
+        await expireActiveMemberships();
         const stats = {
             totalMembers: await Customer.countDocuments({ 'membership.status': { $in: ['Active', 'Approved'] } }),
             pending: await Customer.countDocuments({ 'membership.status': 'Pending' }),
@@ -613,6 +698,10 @@ export const getMembershipStats = async (req, res) => {
             rejected: await Customer.countDocuments({ 'membership.status': 'Rejected' }),
             expired: await Customer.countDocuments({ 'membership.status': 'Expired' }),
             suspended: await Customer.countDocuments({ 'membership.status': 'Suspended' }),
+            cancelled: await Customer.countDocuments({
+                'membership.status': 'None',
+                applicationSubmittedAt: { $exists: true, $ne: null }
+            }),
             byTier: {
                 silver: await Customer.countDocuments({ 'membership.tier': 'Silver' }),
                 gold: await Customer.countDocuments({ 'membership.tier': 'Gold' }),

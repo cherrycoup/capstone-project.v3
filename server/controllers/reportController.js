@@ -64,7 +64,7 @@ const formatRangeLabel = ({ period, startDate, endDate }) => {
 };
 
 const getPeriodRange = ({ periodValue, offsetValue, dateValue }) => {
-    const validPeriods = new Set(["daily", "weekly", "monthly", "last30"]);
+    const validPeriods = new Set(["daily", "weekly", "monthly", "last30", "last7"]);
     const period = validPeriods.has(periodValue) ? periodValue : "monthly";
     const offset = Math.max(0, Number.parseInt(offsetValue || "0", 10) || 0);
     const now = new Date();
@@ -79,6 +79,21 @@ const getPeriodRange = ({ periodValue, offsetValue, dateValue }) => {
             startDate,
             endDate,
             previousStartDate: addDays(startDate, -1),
+            previousEndDate: startDate,
+            label: formatRangeLabel({ period, startDate, endDate }),
+        };
+    }
+
+    if (period === "last7") {
+        const endDate = addDays(startOfDay(now), 1 - (7 * offset));
+        const startDate = addDays(endDate, -7);
+
+        return {
+            period,
+            offset,
+            startDate,
+            endDate,
+            previousStartDate: addDays(startDate, -7),
             previousEndDate: startDate,
             label: formatRangeLabel({ period, startDate, endDate }),
         };
@@ -218,7 +233,7 @@ const getCategorySales = async (match) => {
                 as: "product",
             },
         },
-        { $unwind: { path: "$product", preserveNullAndEmptyArrays: true } },
+        { $unwind: "$product" },
         {
             $group: {
                 _id: "$product.category",
@@ -237,36 +252,6 @@ const getCategorySales = async (match) => {
     }));
 };
 
-const getTopProducts = async (match) => {
-    const rows = await OrderItem.aggregate([
-        {
-            $lookup: {
-                from: "orders",
-                localField: "orderId",
-                foreignField: "_id",
-                as: "order",
-            },
-        },
-        { $unwind: "$order" },
-        { $match: { "order.status": "Completed", "order.createdAt": match.createdAt } },
-        {
-            $group: {
-                _id: "$productName",
-                sold: { $sum: "$quantity" },
-                revenue: { $sum: "$subtotal" },
-            },
-        },
-        { $sort: { revenue: -1 } },
-        { $limit: 8 },
-    ]);
-
-    return rows.map((row) => ({
-        product: row._id || "Product",
-        sold: row.sold || 0,
-        revenue: currency(row.revenue),
-    }));
-};
-
 const getStatusBreakdown = async (match) => {
     const rows = await Order.aggregate([
         { $match: match },
@@ -277,15 +262,55 @@ const getStatusBreakdown = async (match) => {
     return rows.map((row) => ({ name: row._id || "Unknown", value: row.value || 0 }));
 };
 
+const normalizePaymentMethod = (method) => {
+    const raw = String(method || "").trim();
+    const normalized = raw.toLowerCase();
+
+    const canonical = {
+        gcash: "GCash",
+        "bank transfer": "Bank Transfer",
+        "cash on delivery": "Cash on Delivery",
+        "credit card": "Credit Card",
+        paypal: "PayPal",
+        paymaya: "PayMaya",
+        "google pay": "Google Pay",
+        "apple pay": "Apple Pay",
+    };
+
+    return canonical[normalized] || raw.replace(/\w\S*/g, (word) =>
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    );
+};
+
 const getPaymentBreakdown = async (match) => {
     const rows = await Order.aggregate([
         { $match: match },
-        { $group: { _id: "$paymentMethod", value: { $sum: "$total" }, orders: { $sum: 1 } } },
+        {
+            $addFields: {
+                normalizedPaymentMethod: {
+                    $trim: {
+                        input: { $toLower: { $ifNull: ["$paymentMethod", ""] } },
+                    },
+                },
+            },
+        },
+        {
+            $match: {
+                normalizedPaymentMethod: { $ne: "" },
+            },
+        },
+        {
+            $group: {
+                _id: "$normalizedPaymentMethod",
+                value: { $sum: "$total" },
+                orders: { $sum: 1 },
+            },
+        },
         { $sort: { value: -1 } },
     ]);
 
     return rows.map((row) => ({
-        method: row._id || "Unknown",
+        method: normalizePaymentMethod(row._id),
         revenue: currency(row.value),
         orders: row.orders || 0,
     }));
@@ -299,6 +324,56 @@ const getAppointmentStatusBreakdown = async (match) => {
     ]);
 
     return rows.map((row) => ({ name: row._id || "Unknown", value: row.value || 0 }));
+};
+
+const getTopProducts = async (match) => {
+    const rows = await Order.aggregate([
+        { $match: { ...match, status: "Completed" } },
+        {
+            $lookup: {
+                from: "orderitems",
+                localField: "_id",
+                foreignField: "orderId",
+                as: "items",
+            },
+        },
+        { $unwind: "$items" },
+        { $match: { "items.productId": { $ne: null } } },
+        {
+            $lookup: {
+                from: "products",
+                localField: "items.productId",
+                foreignField: "_id",
+                as: "productInfo",
+            },
+        },
+        { $unwind: "$productInfo" },
+        { $match: { "productInfo.productName": { $ne: null } } },
+        {
+            $group: {
+                _id: "$items.productId",
+                productName: { $last: "$productInfo.productName" },
+                sold: { $sum: "$items.quantity" },
+                quantity: { $sum: "$items.quantity" },
+                price: { $last: "$productInfo.price" },
+            },
+        },
+        {
+            $addFields: {
+                calculatedRevenue: {
+                    $multiply: ["$quantity", { $ifNull: ["$price", 0] }],
+                },
+            },
+        },
+        { $sort: { calculatedRevenue: -1 } },
+        { $limit: 3 },
+    ]);
+
+    return rows.map((row) => ({
+        product: row.productName || "Unknown Product",
+        sold: row.sold || 0,
+        revenue: currency(row.calculatedRevenue || 0),
+    }));
 };
 
 const getRepeatCustomers = async () => {
@@ -344,10 +419,10 @@ export const getReportOverview = async (req, res) => {
             repeatCustomers,
             trend,
             categorySales,
-            topProducts,
             statusBreakdown,
             paymentBreakdown,
             appointmentStatusBreakdown,
+            topProducts,
             lowStockProducts,
             recentOrders,
         ] = await Promise.all([
@@ -383,10 +458,10 @@ export const getReportOverview = async (req, res) => {
             getRepeatCustomers(),
             getTrend(range),
             getCategorySales(match),
-            getTopProducts(match),
             getStatusBreakdown(match),
             getPaymentBreakdown(match),
             getAppointmentStatusBreakdown(appointmentMatch),
+            getTopProducts(match),
             Product.find({
                 $expr: {
                     $and: [

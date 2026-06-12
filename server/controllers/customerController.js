@@ -6,12 +6,14 @@ import {
     cleanProfileImage,
     isValidObjectId,
     normalizeEmail,
+    isStrongPassword,
 } from "../utils/validation.js";
-import { MEMBERSHIP_STATUSES, MEMBERSHIP_TIERS } from "../utils/membership.js";
 
-const defaultMembership = ({ status = "Active", tier = "Silver" } = {}) => {
-    const expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+import bcrypt from "bcrypt";
+import { MEMBERSHIP_STATUSES, MEMBERSHIP_TIERS, getExpiryDate, expireActiveMemberships } from "../utils/membership.js";
+
+const defaultMembership = ({ status = "Active", tier = "Prime" } = {}) => {
+    const expiresAt = status === "None" ? null : getExpiryDate(new Date());
 
     return {
         status,
@@ -19,14 +21,14 @@ const defaultMembership = ({ status = "Active", tier = "Silver" } = {}) => {
         pointsBalance: 0,
         joinedAt: status === "None" ? null : new Date(),
         approvedAt: status === "Active" ? new Date() : null,
-        expiresAt: status === "None" ? null : expiresAt,
+        expiresAt,
         renewalCount: 0,
     };
 };
 
 const mapCustomerInput = (body) => {
     const contactInfo = body.contactInfo || {};
-    const tier = MEMBERSHIP_TIERS[body.membership?.tier] ? body.membership.tier : "Silver";
+    const tier = MEMBERSHIP_TIERS[body.membership?.tier] ? body.membership.tier : "Prime";
     const status = MEMBERSHIP_STATUSES.includes(body.membership?.status)
         ? body.membership.status
         : body.role === "Guest" ? "None" : "Active";
@@ -46,11 +48,31 @@ const mapCustomerInput = (body) => {
 
 const recordMembershipHistory = (payload) => MembershipHistory.create(payload);
 
+export const refreshCustomerMembershipIfExpired = async (customer) => {
+    if (!customer || !customer.membership) {
+        return customer;
+    }
+
+    if (
+        customer.membership.status === "Active" &&
+        customer.membership.expiresAt &&
+        new Date(customer.membership.expiresAt) < new Date()
+    ) {
+        customer.membership.status = "Expired";
+        customer.role = "Guest";
+        customer.updatedAt = new Date();
+        await customer.save();
+    }
+
+    return customer;
+};
+
 /**
  * Get all customers (Staff/Admin only)
  */
 export const getAllCustomers = async (req, res) => {
     try {
+        await expireActiveMemberships();
         const customers = await Customer.find().sort({ createdAt: -1 });
         res.status(200).json({
             success: true,
@@ -84,9 +106,13 @@ export const getCurrentCustomer = async (req, res) => {
             });
         }
 
-        const customer = user.customerId
+        let customer = user.customerId
             ? await Customer.findById(user.customerId)
             : await Customer.findOne({ "contactInfo.email": user.email });
+
+        if (customer) {
+            await refreshCustomerMembershipIfExpired(customer);
+        }
 
         res.status(200).json({
             success: true,
@@ -215,13 +241,15 @@ export const getCustomerById = async (req, res) => {
             });
         }
 
-        const customer = await Customer.findById(req.params.id);
+        let customer = await Customer.findById(req.params.id);
         if (!customer) {
             return res.status(404).json({
                 success: false,
                 message: "Customer not found",
             });
         }
+
+        await refreshCustomerMembershipIfExpired(customer);
 
         res.status(200).json({
             success: true,
@@ -341,37 +369,60 @@ export const updateMembership = async (req, res) => {
         const status = MEMBERSHIP_STATUSES.includes(req.body.status)
             ? req.body.status
             : customer.membership?.status || "Active";
+
+        if (customer.role === "Member" && status === "None") {
+            return res.status(400).json({
+                success: false,
+                message: "Cannot downgrade an existing Member to Guest.",
+            });
+        }
         const tier = MEMBERSHIP_TIERS[req.body.tier]
             ? req.body.tier
             : customer.membership?.tier || "Silver";
         const pointsAdjustment = Number(req.body.pointsAdjustment || 0);
         const notes = cleanString(req.body.notes, 500);
-        const expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : customer.membership?.expiresAt;
+        const currentMembership = customer.membership?.toObject
+            ? customer.membership.toObject()
+            : customer.membership || defaultMembership();
 
-        if (req.body.expiresAt && Number.isNaN(expiresAt.getTime())) {
+        const isApproval = currentMembership.status !== "Active" && status === "Active";
+        const joinedAt = status === "Active"
+            ? currentMembership.joinedAt
+                ? new Date(currentMembership.joinedAt)
+                : new Date()
+            : currentMembership.joinedAt;
+        const expiresAt = status === "Active"
+            ? req.body.expiresAt
+                ? new Date(req.body.expiresAt)
+                : getExpiryDate(joinedAt)
+            : currentMembership.expiresAt;
+
+        if (req.body.expiresAt && Number.isNaN(new Date(req.body.expiresAt).getTime())) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid expiration date",
             });
         }
 
-        const previousStatus = customer.membership?.status || "";
-        const previousTier = customer.membership?.tier || "";
-        const previousPoints = customer.membership?.pointsBalance || 0;
+        const previousStatus = currentMembership.status || "";
+        const previousTier = currentMembership.tier || "";
+        const previousPoints = currentMembership.pointsBalance || 0;
         const nextPoints = Math.max(0, previousPoints + pointsAdjustment);
-        const isApproval = previousStatus !== "Active" && status === "Active";
 
         customer.role = status === "Active" ? "Member" : "Guest";
         customer.membership = {
-            ...(customer.membership?.toObject ? customer.membership.toObject() : customer.membership || defaultMembership()),
+            ...currentMembership,
             status,
             tier,
             pointsBalance: nextPoints,
-            approvedAt: isApproval ? new Date() : customer.membership?.approvedAt,
+            joinedAt: status === "Active" ? joinedAt : currentMembership.joinedAt,
+            approvedAt: status === "Active"
+                ? isApproval ? new Date() : currentMembership.approvedAt
+                : currentMembership.approvedAt,
             expiresAt,
             renewalCount: req.body.renew === true
-                ? (customer.membership?.renewalCount || 0) + 1
-                : customer.membership?.renewalCount || 0,
+                ? (currentMembership.renewalCount || 0) + 1
+                : currentMembership.renewalCount || 0,
         };
         customer.updatedAt = new Date();
         await customer.save();
@@ -664,6 +715,66 @@ export const updateEmailPreferences = async (req, res) => {
             success: false,
             message: "Internal server error",
         });
+    }
+};
+
+/**
+ * Update password for authenticated customer
+ */
+export const updateCustomerPassword = async (req, res) => {
+    try {
+        if (req.user?.type !== "customer") {
+            return res.status(403).json({
+                success: false,
+                message: "Customer account required",
+            });
+        }
+
+        const { oldPassword, newPassword } = req.body;
+        if (!oldPassword || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "oldPassword and newPassword are required",
+            });
+        }
+
+        const user = await User.findById(req.user.id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "Customer not found",
+            });
+        }
+
+        if (!user.password) {
+            return res.status(400).json({
+                success: false,
+                message: "This account does not support password authentication",
+            });
+        }
+
+        if (!isStrongPassword(newPassword)) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 8 characters and include a letter and a number",
+            });
+        }
+
+        const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
+        if (!isPasswordValid) {
+            return res.status(400).json({
+                success: false,
+                message: "Old password is incorrect",
+            });
+        }
+
+        user.password = await bcrypt.hash(newPassword, 10);
+        await user.save();
+
+        res.status(200).json({ success: true, message: "Password updated successfully" });
+    } catch (error) {
+        console.error("[updateCustomerPassword] error:", error.stack || error);
+        res.status(500).json({ success: false, message: "Internal server error" });
     }
 };
 

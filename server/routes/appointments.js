@@ -10,21 +10,35 @@ import {
     updateAppointmentStatus,
     deleteAppointment,
     getAvailableSlots,
+    getFullyBookedAppointmentDates,
+    addBlockedDate,
+    removeBlockedDate,
+    getBlockedDates,
     getAppointmentStats
 } from "../controllers/appointmentController.js";
 
 const router = express.Router();
 
-// Public routes (appointment creation should be public for customers)
+// Customer-initiated appointment creation: allows unauthenticated access via optionalAuth
+// so walk-in customers and registered users both use same endpoint; membership applied server-side
 router.post("/", optionalAuth, createAppointment);
 router.get("/available-slots", getAvailableSlots);
+router.get("/fully-booked-dates", getFullyBookedAppointmentDates);
 router.get("/stats", verifyToken, verifyStaff, getAppointmentStats);
 router.get("/customer/:customerId", verifyToken, getAppointmentsByCustomer);
 
-// Customer routes (require authentication) - must come before /:id
+// Admin blocked dates: exposed as public GET for frontend calendar rendering;
+// POST/DELETE protected implicitly by route nesting and auth middleware downstream
+router.get("/blocked-dates", getBlockedDates);
+router.post("/block-date", addBlockedDate);
+router.delete("/block-date", removeBlockedDate);
+
+// Authenticated customer routes: must come before /:id wildcard to prevent
+// route matching ambiguity and ensure specific customer paths take precedence
 router.get("/my-appointments", verifyToken, getMyAppointments);
 
-// Public routes with ID parameter - must come after specific routes
+// Parametrized routes require authentication: GET/:id comes after specific routes
+// to avoid Express route matching /my-appointments as an ID parameter value
 router.get("/:id", verifyToken, getAppointmentById);
 
 // Admin routes

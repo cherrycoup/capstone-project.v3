@@ -35,7 +35,7 @@ const orderSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ["GCash", "Cash on Delivery", "COD"],
+        enum: ["GCash", "Bank Transfer"],
         required: true
     },
     paymentStatus: {
@@ -65,8 +65,8 @@ const orderSchema = new mongoose.Schema({
     },
     orderType: {
         type: String,
-        enum: ["regular", "membership"],
-        default: "regular"
+        enum: ["products", "package", "membership", "regular"],
+        default: "products"
     },
    
     total: {
@@ -141,9 +141,28 @@ const orderSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
+}, {
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
 
 orderSchema.index({ customerId: 1, createdAt: -1 });
+
+orderSchema.virtual("orderId").get(function () {
+    if (this.referenceNumber) {
+        return this.referenceNumber;
+    }
+
+    const timestamp = this.createdAt || this._id?.getTimestamp?.();
+    const date = timestamp ? new Date(timestamp) : new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const suffix = this._id?.toString().slice(-6).toUpperCase() || "000000";
+
+    return `ORD-${year}${month}${day}-${suffix}`;
+});
 
 const Order = mongoose.model("Order", orderSchema);
 export default Order;

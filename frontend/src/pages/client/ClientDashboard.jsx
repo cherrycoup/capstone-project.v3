@@ -14,11 +14,15 @@ import {
   ShoppingBag,
   User,
   Zap,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
+import { membershipAPI } from "../../utils/api.js";
+import { getDaysUntilExpiration, isMembershipExpired } from "../../utils/membership";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
-import logoSrc from "../../assets/logo (1).webp";
+import logoSrc from "../../assets/logo.webp";
 import ClientAppointments from "./ClientAppointments.jsx";
 import ClientHome from "./ClientHome.jsx";
 import ClientOrderForm from "./ClientOrderForm.jsx";
@@ -119,7 +123,9 @@ export default function ClientDashboard() {
       try {
         const [ordersResponse, appointmentsResponse] = await Promise.all([
           user.customerId ? ordersAPI.getByCustomer(user.customerId) : Promise.resolve({ data: { data: [] } }),
-          appointmentsAPI.getMyAppointments(),
+          user?.type === "customer"
+            ? appointmentsAPI.getMyAppointments()
+            : Promise.resolve({ data: { data: [] } }),
         ]);
         const orders = ordersResponse.data.data || [];
         const appointments = appointmentsResponse.data.data || [];
@@ -149,6 +155,45 @@ export default function ClientDashboard() {
             action: "tracking",
           });
         });
+
+        // Check membership expiry for customers and add notification/toast
+        try {
+          if (user?.type === "customer") {
+            const membRes = await membershipAPI.getMyMembership();
+            const membData = membRes.data.data || null;
+            const membership = membData?.membership || null;
+            if (membership && membership.expiresAt) {
+              const days = getDaysUntilExpiration(membership.expiresAt);
+              const expired = isMembershipExpired(membership);
+              const id = `membership-${user.id}-${membership.expiresAt}`;
+              if (expired) {
+                userNotifications.push({
+                  id,
+                  title: "Membership expired",
+                  message: "Your membership has expired.",
+                  time: membership.expiresAt ? new Date(membership.expiresAt).toLocaleString() : "Now",
+                  unread: !readIds.includes(id),
+                  type: "membership",
+                  action: "membership",
+                });
+                if (!readIds.includes(id)) toast.error("Your membership has expired.");
+              } else if (days <= 7) {
+                userNotifications.push({
+                  id,
+                  title: "Membership expiring soon",
+                  message: `Your membership expires in ${days} day${days === 1 ? "" : "s"}`,
+                  time: membership.expiresAt ? new Date(membership.expiresAt).toLocaleString() : "",
+                  unread: !readIds.includes(id),
+                  type: "membership",
+                  action: "membership",
+                });
+                if (!readIds.includes(id)) toast(`Your membership expires in ${days} day${days === 1 ? "" : "s"}`);
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error loading membership status for notifications:", e);
+        }
 
         setNotifications(userNotifications);
       } catch (error) {
@@ -223,20 +268,20 @@ export default function ClientDashboard() {
 
   const Sidebar = ({ isMobile = false }) => (
     <div
-      className={`${isMobile ? "w-full" : "w-64"} bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white ${
-        isMobile ? "min-h-screen" : "h-screen sticky top-0"
+      className={`${isMobile ? "w-full" : "w-72"} bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white ${
+        isMobile ? "min-h-screen" : "h-[100dvh]"
       } flex flex-col`}
     >
       <div className="p-6 border-b border-slate-700">
-        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
           <img
             src={logoSrc}
             alt="JBM Electro logo"
-            className="h-14 w-[64px] rounded-xl bg-white/10 p-2 object-contain border border-white/10"
+            className="!h-12 !w-12 md:!h-14 md:!w-[64px] rounded-xl bg-white/10 p-1 md:p-2 object-contain border border-white/10"
           />
           <div>
-            <h1 className="text-base font-bold">JBM Electro</h1>
-            <p className="text-xs text-slate-400">Client Portal</p>
+            <h1 className="!text-base md:!text-lg font-bold truncate">JBM Electro</h1>
+            <p className="text-sm text-slate-400">Client Portal</p>
           </div>
         </div>
       </div>
@@ -272,7 +317,7 @@ export default function ClientDashboard() {
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-200"
         >
           <User className="h-5 w-5 flex-shrink-0" />
-          <span className="text-sm font-medium flex-1 text-left">Account</span>
+          <span className="text-base font-medium flex-1 text-left">Account</span>
           <ChevronDown
             className={`h-4 w-4 transition-transform flex-shrink-0 ${
               accountMenuOpen ? "rotate-180" : ""
@@ -292,8 +337,8 @@ export default function ClientDashboard() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-slate-400">Logged in as</p>
-                <p className="text-sm font-semibold text-white truncate">{user?.name || "Customer"}</p>
-                <p className="text-xs text-slate-400 truncate">{user?.email || "customer@example.com"}</p>
+                <p className="text-base font-semibold text-white truncate">{user?.name || "Customer"}</p>
+                <p className="text-sm text-slate-400 truncate">{user?.email || "customer@example.com"}</p>
               </div>
             </div>
             <div className="h-px bg-slate-600" />
@@ -303,17 +348,17 @@ export default function ClientDashboard() {
                 setAccountMenuOpen(false);
                 setActiveTab("settings");
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-300 hover:bg-slate-600 rounded transition-all duration-200"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-600 rounded transition-all duration-200"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-5 w-5" />
               Settings
             </button>
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-300 hover:bg-red-600/20 rounded transition-all duration-200"
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-300 hover:bg-red-600/20 rounded transition-all duration-200"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-5 w-5" />
               Logout
             </button>
           </div>
@@ -323,8 +368,8 @@ export default function ClientDashboard() {
   );
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <div className="hidden md:block">
+    <div className="flex h-[100dvh] overflow-hidden bg-gray-50">
+      <div className="fixed inset-y-0 left-0 z-40 hidden w-64 md:block">
         <Sidebar />
       </div>
 
@@ -332,28 +377,37 @@ export default function ClientDashboard() {
         <div className="fixed inset-0 z-40 md:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
             aria-label="Close customer menu"
           />
           <div className="relative z-50 w-64">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="absolute right-4 top-4 text-slate-200 hover:text-white z-50"
+              aria-label="Close sidebar"
+            >
+              <X className="h-5 w-5" />
+            </button>
             <Sidebar isMobile />
           </div>
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-4 shadow-sm">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col md:ml-64">
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6">
           <Button
             variant="outline"
             size="icon"
-            className="md:hidden"
+            className="shrink-0 md:hidden"
             onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open customer menu"
           >
             <Menu className="h-5 w-5" />
           </Button>
 
-          <div className="ml-auto flex items-center gap-4">
+          <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-4">
             <button
               type="button"
               onClick={openSettings}
@@ -452,13 +506,13 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <main className="flex-1 p-6 md:p-8 overflow-auto">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10">
           {activeTab === "home" && <ClientHome onNavigateTab={setActiveTab} />}
           {activeTab === "products" && <ClientProducts />}
           {activeTab === "packages" && (
             <ClientPackages onSelectPackage={handleSelectPackage} />
           )}
-          {activeTab === "order" && <ClientOrderForm selectedPackage={selectedPackage} />}
+          {activeTab === "order" && <ClientOrderForm selectedPackage={selectedPackage} onCancelPackage={() => setSelectedPackage(null)} />}
           {activeTab === "appointments" && <ClientAppointments />}
           {activeTab === "tracking" && <ClientTracking />}
           {activeTab === "settings" && <SettingsPage />}

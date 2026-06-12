@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { Calendar, Clock, User, AlertCircle } from "lucide-react";
+import { Calendar, Clock, User, AlertCircle, Trash2 } from "lucide-react";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import {
@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card.jsx";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog.jsx";
 import { appointmentsAPI } from "../../utils/api.js";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -24,6 +25,9 @@ export default function ClientMyAppointments() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(Boolean(user));
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [cancelLoading, setCancelLoading] = useState(false);
 
   async function fetchMyAppointments() {
     try {
@@ -62,11 +66,34 @@ export default function ClientMyAppointments() {
     return timeSlot;
   };
 
+  const openCancelDialog = (appointment) => {
+    setSelectedAppointment(appointment);
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelAppointment = async () => {
+    if (!selectedAppointment) return;
+
+    setCancelLoading(true);
+    try {
+      await appointmentsAPI.delete(selectedAppointment._id);
+      toast.success("Appointment cancelled successfully");
+      setCancelDialogOpen(false);
+      setSelectedAppointment(null);
+      fetchMyAppointments();
+    } catch (error) {
+      console.error("Error cancelling appointment:", error);
+      toast.error("Failed to cancel appointment");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold">My Appointments</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">My Appointments</h2>
           <p className="text-gray-600">View and manage your upcoming appointments</p>
         </div>
         <div className="text-center py-12">
@@ -80,7 +107,7 @@ export default function ClientMyAppointments() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-3xl font-bold">My Appointments</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">My Appointments</h2>
           <p className="text-gray-600">View and manage your upcoming appointments</p>
         </div>
         <Card>
@@ -103,9 +130,9 @@ export default function ClientMyAppointments() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-bold">My Appointments</h2>
+          <h2 className="text-2xl font-bold sm:text-3xl">My Appointments</h2>
           <p className="text-gray-600">View and manage your upcoming appointments</p>
         </div>
         <Badge variant="secondary" className="text-sm">
@@ -132,8 +159,8 @@ export default function ClientMyAppointments() {
         <div className="space-y-4">
           {appointments.map((appointment) => (
             <Card key={appointment._id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
+              <CardHeader className="p-4 sm:p-5 lg:p-6">
+                <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
                     <CardTitle className="flex items-center gap-2">
                       <Calendar className="h-5 w-5 text-blue-600" />
@@ -151,7 +178,7 @@ export default function ClientMyAppointments() {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6">
                 {appointment.notes && (
                   <div className="bg-gray-50 p-3 rounded-lg">
                     <p className="text-sm text-gray-600">
@@ -191,11 +218,63 @@ export default function ClientMyAppointments() {
                     </p>
                   </div>
                 )}
+
+                {appointment.status !== "Cancelled" && appointment.status !== "Completed" && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => openCancelDialog(appointment)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Cancel Appointment
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Appointment?</DialogTitle>
+          </DialogHeader>
+          {selectedAppointment && (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to cancel this appointment?
+              </p>
+              <div className="rounded-lg bg-gray-50 p-3 text-sm">
+                <p><strong>Service:</strong> {selectedAppointment.service}</p>
+                <p><strong>Date:</strong> {formatDate(selectedAppointment.date)}</p>
+                <p><strong>Time:</strong> {formatTime(selectedAppointment.timeSlot)}</p>
+              </div>
+              <p className="text-xs text-gray-500">This action cannot be undone.</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setCancelDialogOpen(false)}
+              disabled={cancelLoading}
+            >
+              Keep Appointment
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleCancelAppointment}
+              disabled={cancelLoading}
+            >
+              {cancelLoading ? "Cancelling..." : "Cancel Appointment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

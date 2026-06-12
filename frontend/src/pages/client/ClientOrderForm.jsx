@@ -7,6 +7,7 @@ import {
   Plus,
   ShoppingCart,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { Alert, AlertDescription } from "../../components/ui/alert.jsx";
 import { Badge } from "../../components/ui/badge.jsx";
@@ -20,21 +21,20 @@ import {
 } from "../../components/ui/card.jsx";
 import { Input } from "../../components/ui/input.jsx";
 import { Label } from "../../components/ui/label.jsx";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../components/ui/select.jsx";
 import { Textarea } from "../../components/ui/textarea.jsx";
+import PaymentDetailsModal from "../../components/ui/PaymentDetailsModal.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useCart } from "../../context/CartContext.jsx";
 import { ordersAPI } from "../../utils/api.js";
 
+const paymentOptions = [
+  { value: "gcash", label: "GCash" },
+  { value: "bank_transfer", label: "Bank Transfer" },
+];
+
 const paymentMethodMap = {
   gcash: "GCash",
-  cod: "Cash on Delivery",
+  bank_transfer: "Bank Transfer",
 };
 
 const isBackendProductId = (id) => !String(id).startsWith("fallback-");
@@ -46,7 +46,7 @@ const getPackageItemName = (item) => getPackageProduct(item)?.productName || ite
 const getPackageItemPrice = (item) => Number(getPackageProduct(item)?.srp ?? getPackageProduct(item)?.price ?? 0);
 const getPackageItemStock = (item) => Number(getPackageProduct(item)?.stockLevel ?? 0);
 
-export default function ClientOrderForm({ selectedPackage }) {
+export default function ClientOrderForm({ selectedPackage, onCancelPackage }) {
   const { user } = useAuth();
   const { cart, clearCart, updateQuantity, removeFromCart } = useCart();
   const [selectedIds, setSelectedIds] = useState(() => cart.map((item) => item._id));
@@ -54,10 +54,21 @@ export default function ClientOrderForm({ selectedPackage }) {
   const [address, setAddress] = useState(user?.address || "");
   const [contact, setContact] = useState(user?.phone || "");
   const [email, setEmail] = useState(user?.email || "");
-  const [paymentMethod, setPaymentMethod] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState(paymentOptions[0].value);
   const [referenceNumber, setReferenceNumber] = useState("");
   const [specialInstructions, setSpecialInstructions] = useState("");
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const handlePaymentMethodChange = (value) => {
+    setPaymentMethod(value);
+  };
+
+  const openPaymentModal = () => setIsPaymentModalOpen(true);
+  const closePaymentModal = () => setIsPaymentModalOpen(false);
+  const handlePaymentModalConfirm = () => {
+    closePaymentModal();
+  };
 
   const selectedCartItems = cart.filter((item) => selectedIds.includes(item._id));
   const allSelected = cart.length > 0 && selectedCartItems.length === cart.length;
@@ -85,6 +96,20 @@ export default function ClientOrderForm({ selectedPackage }) {
     }, 0);
   };
 
+  const calculateCartBaseTotal = () => selectedCartItems.reduce((total, item) => {
+    const basePrice = Number(item.srp ?? item.price ?? 0);
+    return total + basePrice * item.quantity;
+  }, 0);
+
+  const calculateMembershipDiscount = () => {
+    if (selectedPackage) return 0;
+    if (user?.memberRole !== "Member") return 0;
+
+    const baseTotal = calculateCartBaseTotal();
+    const discountedTotal = calculateTotal();
+    return Math.max(0, baseTotal - discountedTotal);
+  };
+
   const handleToggleSelect = (productId) => {
     setSelectedIds((prev) =>
       prev.includes(productId)
@@ -108,7 +133,7 @@ export default function ClientOrderForm({ selectedPackage }) {
     setAddress(user?.address || "");
     setContact(user?.phone || "");
     setEmail(user?.email || "");
-    setPaymentMethod("");
+    setPaymentMethod(paymentOptions[0].value);
     setReferenceNumber("");
     setSpecialInstructions("");
   };
@@ -128,8 +153,10 @@ export default function ClientOrderForm({ selectedPackage }) {
       toast.error("Please select a payment method");
       return;
     }
-    if (paymentMethod === "gcash" && !referenceNumber) {
-      toast.error("Please enter the payment reference number for GCash");
+    if ((paymentMethod === "gcash" || paymentMethod === "bank_transfer") && !referenceNumber) {
+      toast.error(
+        `Please enter the payment reference number for ${paymentMethod === "gcash" ? "GCash" : "Bank Transfer"}`
+      );
       return;
     }
     if (selectedPackage) {
@@ -152,6 +179,12 @@ export default function ClientOrderForm({ selectedPackage }) {
         quantity: item.quantity
       }));
       
+      // Determine order type
+      let orderType = "products"; // default
+      if (selectedPackage) {
+        orderType = "package"; // package deal order
+      }
+      
       const response = await ordersAPI.create({
         customerId: user?.id,
         fullName: name,
@@ -162,6 +195,7 @@ export default function ClientOrderForm({ selectedPackage }) {
         referenceNumber,
         packageId: selectedPackage?._id,
         items: selectedPackage ? [] : orderItemsForAPI,
+        orderType,
         notes: specialInstructions,
       });
 
@@ -184,15 +218,15 @@ export default function ClientOrderForm({ selectedPackage }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold">Place an Order</h2>
+        <h2 className="text-2xl font-bold sm:text-3xl">Place an Order</h2>
         <p className="text-gray-600">Fill out the form below to place your order</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {selectedPackage && (
           <Card className="border-blue-500 border-2 bg-blue-50">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
+            <CardHeader className="p-4 sm:p-5 lg:p-6">
+              <div className="flex items-center justify-between gap-4">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <Package className="h-5 w-5 text-blue-600" />
@@ -200,10 +234,23 @@ export default function ClientOrderForm({ selectedPackage }) {
                   </CardTitle>
                   <CardDescription>You have selected a package deal</CardDescription>
                 </div>
-                <Badge className="bg-blue-600">Package Deal</Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-blue-600">Package Deal</Badge>
+                  {onCancelPackage && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={onCancelPackage}
+                      className="text-red-600 border-red-300 hover:bg-red-50"
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6">
               <div className="space-y-5">
                 <h3 className="text-xl font-bold text-blue-900">{selectedPackage.name}</h3>
                 <p className="text-gray-700">{selectedPackage.description}</p>
@@ -275,99 +322,167 @@ export default function ClientOrderForm({ selectedPackage }) {
                   <p>No items in cart. Browse products to add items.</p>
                 </div>
               ) : (
-                <div className="rounded-3xl border border-gray-200 bg-white shadow-sm">
-                  <table className="w-full min-w-[640px] border-collapse text-left">
-                    <thead>
-                      <tr className="border-b bg-gray-50 text-sm font-semibold text-gray-700">
-                        <th className="px-4 py-3">
-                          <label className="inline-flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                              checked={allSelected}
-                              onChange={handleToggleSelectAll}
-                            />
-                            Select All
-                          </label>
-                        </th>
-                        <th className="px-4 py-3">Product</th>
-                        <th className="px-4 py-3">Price</th>
-                        <th className="px-4 py-3">Quantity</th>
-                        <th className="px-4 py-3">Subtotal</th>
-                        <th className="px-4 py-3">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {cart.map((item) => {
-                        const subtotal = (item.price || 0) * item.quantity;
-                        const isSelected = selectedIds.includes(item._id);
-                        const stockLevel = getCartItemStock(item);
-
-                        return (
-                          <tr key={item._id} className="border-b last:border-b-0">
-                            <td className="px-4 py-4 align-middle">
+                <div className="space-y-4">
+                  <div className="hidden md:block rounded-3xl border border-gray-200 bg-white shadow-sm">
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr className="border-b bg-gray-50 text-sm font-semibold text-gray-700">
+                          <th className="px-4 py-3">
+                            <label className="inline-flex items-center gap-2">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-blue-600"
-                                checked={isSelected}
-                                onChange={() => handleToggleSelect(item._id)}
+                                checked={allSelected}
+                                onChange={handleToggleSelectAll}
                               />
-                            </td>
-                            <td className="px-4 py-4 align-middle">
-                              <div className="font-medium text-gray-900">
+                              Select All
+                            </label>
+                          </th>
+                          <th className="px-4 py-3">Product</th>
+                          <th className="px-4 py-3">Price</th>
+                          <th className="px-4 py-3">Quantity</th>
+                          <th className="px-4 py-3">Subtotal</th>
+                          <th className="px-4 py-3">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cart.map((item) => {
+                          const subtotal = (item.price || 0) * item.quantity;
+                          const isSelected = selectedIds.includes(item._id);
+                          const stockLevel = getCartItemStock(item);
+
+                          return (
+                            <tr key={item._id} className="border-b last:border-b-0">
+                              <td className="px-4 py-4 align-middle">
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                                  checked={isSelected}
+                                  onChange={() => handleToggleSelect(item._id)}
+                                />
+                              </td>
+                              <td className="px-4 py-4 align-middle">
+                                <div className="font-medium text-gray-900">
+                                  {item.name || item.productName}
+                                </div>
+                                {item.category && (
+                                  <div className="text-xs text-gray-500">{item.category}</div>
+                                )}
+                                {stockLevel > 0 && (
+                                  <div className="text-xs text-gray-500">{stockLevel} in stock</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-4 align-middle text-gray-900">
+                                PHP {Number(item.price || 0).toLocaleString()}
+                              </td>
+                              <td className="px-4 py-4 align-middle">
+                                <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-2 h-10">
+                                  <button
+                                    type="button"
+                                    className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm hover:bg-gray-100"
+                                    onClick={() => updateQuantity(item._id, -1)}
+                                    disabled={item.quantity <= 1}
+                                  >
+                                    <Minus className="h-4 w-4" />
+                                  </button>
+                                  <span className="w-12 text-center text-sm font-semibold flex-shrink-0 leading-none">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm hover:bg-gray-100"
+                                    onClick={() => updateQuantity(item._id, 1)}
+                                    disabled={stockLevel > 0 && item.quantity >= stockLevel}
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 align-middle font-semibold text-blue-600">
+                                PHP {subtotal.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-4 align-middle text-right">
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
+                                  onClick={() => removeFromCart(item._id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Remove
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="grid gap-4 md:hidden">
+                    {cart.map((item) => {
+                      const subtotal = (item.price || 0) * item.quantity;
+                      const stockLevel = getCartItemStock(item);
+
+                      return (
+                        <div key={item._id} className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="font-semibold text-gray-900 truncate">
                                 {item.name || item.productName}
                               </div>
                               {item.category && (
-                                <div className="text-xs text-gray-500">{item.category}</div>
+                                <div className="mt-1 text-xs text-gray-500">{item.category}</div>
                               )}
                               {stockLevel > 0 && (
-                                <div className="text-xs text-gray-500">{stockLevel} in stock</div>
+                                <div className="mt-1 text-xs text-gray-500">{stockLevel} in stock</div>
                               )}
-                            </td>
-                            <td className="px-4 py-4 align-middle text-gray-900">
+                            </div>
+                            <div className="text-right text-sm font-semibold text-blue-600">
                               PHP {Number(item.price || 0).toLocaleString()}
-                            </td>
-                            <td className="px-4 py-4 align-middle">
-                              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-2 py-1">
+                            </div>
+                          </div>
+
+                              <div className="mt-3 grid gap-3 text-sm">
+                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3">
+                              <span className="font-medium text-gray-700">Quantity</span>
+                              <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-2 h-10">
                                 <button
                                   type="button"
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm hover:bg-gray-100"
+                                  className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm hover:bg-gray-100"
                                   onClick={() => updateQuantity(item._id, -1)}
                                   disabled={item.quantity <= 1}
                                 >
                                   <Minus className="h-4 w-4" />
                                 </button>
-                                <span className="w-10 text-center text-sm font-semibold">
+                                <span className="w-12 text-center text-sm font-semibold flex-shrink-0 leading-none">
                                   {item.quantity}
                                 </span>
                                 <button
                                   type="button"
-                                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm hover:bg-gray-100"
+                                  className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-gray-700 shadow-sm hover:bg-gray-100"
                                   onClick={() => updateQuantity(item._id, 1)}
                                   disabled={stockLevel > 0 && item.quantity >= stockLevel}
                                 >
                                   <Plus className="h-4 w-4" />
                                 </button>
                               </div>
-                            </td>
-                            <td className="px-4 py-4 align-middle font-semibold text-blue-600">
-                              PHP {subtotal.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-4 align-middle text-right">
-                              <button
-                                type="button"
-                                className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
-                                onClick={() => removeFromCart(item._id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Remove
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Subtotal</span>
+                              <span className="font-semibold text-blue-600">PHP {subtotal.toLocaleString()}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="w-full rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+                              onClick={() => removeFromCart(item._id)}
+                            >
+                              Remove item
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -430,10 +545,10 @@ export default function ClientOrderForm({ selectedPackage }) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="instructions">Special Instructions (Optional)</Label>
+              <Label htmlFor="instructions">Notes</Label>
               <Textarea
                 id="instructions"
-                placeholder="Any special instructions for delivery or installation..."
+                placeholder="Any special instructions for delivery..."
                 value={specialInstructions}
                 onChange={(event) => setSpecialInstructions(event.target.value)}
                 rows={2}
@@ -450,33 +565,49 @@ export default function ClientOrderForm({ selectedPackage }) {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="paymentMethod">Payment Method *</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger id="paymentMethod">
-                  <SelectValue placeholder="Select payment method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gcash">GCash</SelectItem>
-                  <SelectItem value="cod">Cash on Delivery</SelectItem>
-                </SelectContent>
-              </Select>
+              <select
+                id="paymentMethod"
+                value={paymentMethod}
+                onChange={(event) => handlePaymentMethodChange(event.target.value)}
+                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                {paymentOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="referenceNumber">
-                Reference Number {paymentMethod === "gcash" ? "*" : "(optional)"}
-              </Label>
-              <Input
-                id="referenceNumber"
-                placeholder={paymentMethod === "gcash"
-                  ? "Enter the GCash reference number"
-                  : paymentMethod === "cod"
-                  ? "Reference number is optional for COD"
-                  : "Select payment method"}
-                value={referenceNumber}
-                onChange={(event) => setReferenceNumber(event.target.value)}
-                required={paymentMethod === "gcash"}
-              />
-            </div>
+            {(paymentMethod === "gcash" || paymentMethod === "bank_transfer") && (
+              <div className="space-y-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between"
+                  onClick={openPaymentModal}
+                >
+                  View {paymentMethod === "gcash" ? "GCash" : "Bank Transfer"} payment details
+                </Button>
+                <p className="text-sm text-gray-600">
+                  After sending payment, add the reference number in the modal and submit your order.
+                </p>
+                {referenceNumber && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+                    <span className="font-medium">Reference Number:</span> {referenceNumber}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <PaymentDetailsModal
+              open={isPaymentModalOpen}
+              onClose={closePaymentModal}
+              paymentMethod={paymentMethod}
+              referenceNumber={referenceNumber}
+              onReferenceNumberChange={setReferenceNumber}
+              onConfirm={handlePaymentModalConfirm}
+            />
 
             <Alert className="bg-amber-50 border-amber-200 flex gap-3">
               <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
@@ -500,6 +631,12 @@ export default function ClientOrderForm({ selectedPackage }) {
               <span>Delivery Fee:</span>
               <span>To be collected by courier</span>
             </div>
+            {user?.memberRole === "Member" && !selectedPackage && calculateMembershipDiscount() > 0 && (
+              <div className="flex justify-between text-sm text-emerald-700">
+                <span>Member discount:</span>
+                <span>-PHP {calculateMembershipDiscount().toLocaleString()}</span>
+              </div>
+            )}
             <div className="border-t pt-4 flex justify-between text-2xl font-bold">
               <span>Total:</span>
               <span className="text-blue-600">PHP {calculateTotal().toLocaleString()}</span>

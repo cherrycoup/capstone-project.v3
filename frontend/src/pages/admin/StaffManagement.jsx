@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Pencil,
@@ -10,6 +10,9 @@ import {
   UserRound,
   UsersRound,
   UserX,
+  X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
@@ -51,6 +54,11 @@ export default function StaffManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [scrollWidth, setScrollWidth] = useState(0);
+  const [showTopScroll, setShowTopScroll] = useState(false);
+  const topScrollRef = useRef(null);
+  const tableScrollRef = useRef(null);
 
   useEffect(() => {
     fetchStaff();
@@ -92,6 +100,35 @@ export default function StaffManagement() {
 
   const inactiveStaff = staff.filter((member) => !member.isActive).length;
 
+  useEffect(() => {
+    const updateScrollState = () => {
+      const wrapper = tableScrollRef.current;
+      if (wrapper) {
+        const width = wrapper.scrollWidth;
+        setScrollWidth(width);
+        setShowTopScroll(width > wrapper.clientWidth);
+      } else {
+        setShowTopScroll(false);
+      }
+    };
+
+    updateScrollState();
+    window.addEventListener("resize", updateScrollState);
+    return () => window.removeEventListener("resize", updateScrollState);
+  }, [filteredStaff.length]);
+
+  const handleTopScroll = () => {
+    if (topScrollRef.current && tableScrollRef.current) {
+      tableScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+    }
+  };
+
+  const handleBottomScroll = () => {
+    if (topScrollRef.current && tableScrollRef.current) {
+      topScrollRef.current.scrollLeft = tableScrollRef.current.scrollLeft;
+    }
+  };
+
   const openCreateDialog = () => {
     setEditingId(null);
     setFormData(emptyForm);
@@ -127,7 +164,12 @@ export default function StaffManagement() {
           profileImageUrl: formData.profileImageUrl,
           isActive: formData.isActive,
         });
-        toast.success("Staff member updated");
+
+        if (formData.password) {
+          await staffAPI.adminResetPassword(editingId, formData.password);
+        }
+
+        toast.success(formData.password ? "Staff member updated and password reset" : "Staff member updated");
       } else {
         await staffAPI.create({
           name: formData.name,
@@ -190,7 +232,7 @@ export default function StaffManagement() {
     <div className="space-y-6 p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl mb-2">Staff Management</h1>
+          <h1 className="text-2xl md:text-3xl font-bold mb-2">Staff Management</h1>
           <p className="text-gray-500">Manage admin and staff accounts</p>
         </div>
         <Button onClick={openCreateDialog}>
@@ -199,63 +241,35 @@ export default function StaffManagement() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Staff</p>
-                <p className="text-3xl mt-2">{stats.totalStaff}</p>
-              </div>
-              <UsersRound className="h-8 w-8 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Active</p>
-                <p className="text-3xl mt-2">{stats.activeStaff}</p>
-              </div>
-              <UserCheck className="h-8 w-8 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Admins</p>
-                <p className="text-3xl mt-2">{stats.admins}</p>
-              </div>
-              <ShieldCheck className="h-8 w-8 text-indigo-600" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Inactive</p>
-                <p className="text-3xl mt-2">{inactiveStaff}</p>
-              </div>
-              <UserX className="h-8 w-8 text-red-600" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StaffStat title="Total Staff" value={stats.totalStaff} icon={<UsersRound className="h-8 w-8 text-blue-600" />} />
+        <StaffStat title="Active" value={stats.activeStaff} icon={<UserCheck className="h-8 w-8 text-green-600" />} />
+        <StaffStat title="Admins" value={stats.admins} icon={<ShieldCheck className="h-8 w-8 text-indigo-600" />} />
+        <StaffStat title="Inactive" value={inactiveStaff} icon={<UserX className="h-8 w-8 text-red-600" />} />
       </div>
 
       <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              placeholder="Search staff by name, email, role, or department..."
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              className="pl-10"
-            />
+        <CardContent className="flex min-h-24 items-center justify-center py-5 px-4">
+          <div className="w-full max-w-3xl">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                placeholder="Search staff by name, email, role, or department..."
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                className="h-10 w-full pl-10 pr-10"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -265,22 +279,35 @@ export default function StaffManagement() {
           <CardTitle>Staff Accounts ({filteredStaff.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4">Staff</th>
-                  <th className="text-left py-3 px-4 hidden md:table-cell">Contact</th>
-                  <th className="text-left py-3 px-4 hidden lg:table-cell">Department</th>
-                  <th className="text-left py-3 px-4">Role</th>
-                  <th className="text-left py-3 px-4">Status</th>
-                  <th className="text-left py-3 px-4">Actions</th>
+          {showTopScroll && (
+            <div
+              ref={topScrollRef}
+              className="overflow-x-auto rounded-t-2xl border border-slate-200 border-b-0 bg-white"
+              onScroll={handleTopScroll}
+            >
+              <div style={{ width: `${scrollWidth}px`, height: 1 }} />
+            </div>
+          )}
+          <div
+            ref={tableScrollRef}
+            className="overflow-x-auto rounded-b-2xl border border-slate-200 border-t-0 bg-white"
+            onScroll={handleBottomScroll}
+          >
+            <table className="w-full border-collapse">
+              <thead className="bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500 border-b">
+                <tr>
+                  <th className="text-left py-4 px-5 min-w-[220px]">Staff</th>
+                  <th className="text-left py-4 px-5 min-w-[180px] hidden md:table-cell">Contact</th>
+                  <th className="text-left py-4 px-5 min-w-[160px] hidden lg:table-cell">Department</th>
+                  <th className="text-left py-4 px-5 min-w-[120px]">Role</th>
+                  <th className="text-left py-4 px-5 min-w-[120px]">Status</th>
+                  <th className="text-left py-4 px-5 min-w-[180px]">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStaff.map((member) => (
-                  <tr key={member._id} className="border-b last:border-0">
-                    <td className="py-3 px-4">
+                  <tr key={member._id} className="border-b bg-white last:border-0 hover:bg-slate-50">
+                    <td className="py-4 px-5">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-700 overflow-hidden flex items-center justify-center">
                           {member.profileImageUrl ? (
@@ -299,21 +326,21 @@ export default function StaffManagement() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-3 px-4 hidden md:table-cell">{member.phone || "-"}</td>
-                    <td className="py-3 px-4 hidden lg:table-cell">{member.department || "-"}</td>
-                    <td className="py-3 px-4">
+                    <td className="py-4 px-5 hidden md:table-cell">{member.phone || "-"}</td>
+                    <td className="py-4 px-5 hidden lg:table-cell">{member.department || "-"}</td>
+                    <td className="py-4 px-5">
                       <Badge className={roleBadgeClass[member.role] || roleBadgeClass.Staff}>
                         {member.role}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-4 px-5">
                       {member.isActive ? (
                         <Badge className="bg-green-100 text-green-700">Active</Badge>
                       ) : (
                         <Badge className="bg-red-100 text-red-700">Inactive</Badge>
                       )}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-4 px-5">
                       <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" onClick={() => openEditDialog(member)}>
                           <Pencil className="h-4 w-4 mr-2" />
@@ -345,7 +372,7 @@ export default function StaffManagement() {
                 ))}
                 {filteredStaff.length === 0 && (
                   <tr>
-                    <td className="py-8 px-4 text-center text-gray-500" colSpan={6}>
+                    <td className="py-8 px-5 text-center text-gray-500" colSpan={6}>
                       No staff accounts found.
                     </td>
                   </tr>
@@ -386,19 +413,29 @@ export default function StaffManagement() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
-              {!editingId && (
-                <div className="space-y-2">
-                  <Label htmlFor="staffPassword">Password</Label>
+              <div className="space-y-2">
+                <Label htmlFor="staffPassword">{editingId ? "New Password (leave blank to keep current)" : "Password"}</Label>
+                <div className="relative">
                   <Input
                     id="staffPassword"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(event) => setFormData({ ...formData, password: event.target.value })}
                     minLength={8}
-                    required
+                    required={!editingId}
+                    className="pr-10"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
-              )}
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="staffRole">Role</Label>
                 <select
@@ -434,13 +471,13 @@ export default function StaffManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="staffProfileImage">Profile Image URL</Label>
+              <Label htmlFor="staffProfileImage">Profile Image URL <span className="text-sm text-slate-400">(optional)</span></Label>
               <Input
                 id="staffProfileImage"
                 type="url"
                 value={formData.profileImageUrl}
                 onChange={(event) => setFormData({ ...formData, profileImageUrl: event.target.value })}
-                placeholder="https://example.com/profile.jpg"
+                placeholder="Optional - add later in profile settings"
               />
             </div>
 
@@ -469,5 +506,23 @@ export default function StaffManagement() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function StaffStat({ title, value, icon }) {
+  return (
+    <Card>
+      <CardContent className="flex min-h-40 items-center p-6">
+        <div className="flex w-full items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm text-gray-500">{title}</p>
+            <p className="mt-3 break-words text-3xl font-bold text-slate-950">{value}</p>
+          </div>
+          <div className="shrink-0">
+            {icon}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

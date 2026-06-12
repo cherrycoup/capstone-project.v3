@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Calendar,
-  DollarSign,
   Package,
   ShoppingCart,
   TrendingDown,
@@ -25,7 +24,7 @@ const formatMoney = (value) => `PHP ${Number(value || 0).toLocaleString()}`;
 const formatChange = (value) => {
   const numberValue = Number(value || 0);
   const prefix = numberValue > 0 ? "+" : "";
-  return `${prefix}${numberValue}% vs previous week`;
+  return `${prefix}${numberValue}% vs previous 7-day period`;
 };
 
 export default function AdminDashboard() {
@@ -39,7 +38,7 @@ export default function AdminDashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        const response = await reportsAPI.getOverview({ period: "weekly", offset: 0 });
+        const response = await reportsAPI.getOverview({ period: "last7", offset: 0 });
         if (!active) return;
         setReport(response.data.data);
         setLastUpdated(new Date());
@@ -51,7 +50,7 @@ export default function AdminDashboard() {
         }
       } finally {
         if (active) setLoading(false);
-      } 
+      }
     };
 
     fetchDashboardData();
@@ -87,7 +86,7 @@ export default function AdminDashboard() {
     {
       title: "Appointments",
       value: Number(allTime.appointments || 0).toLocaleString(),
-      change: `${Number(metrics.appointments || 0).toLocaleString()} this week`,
+      change: `${Number(metrics.appointments || 0).toLocaleString()} last 7 days`,
       trend: "up",
       icon: Calendar,
       color: "text-green-600",
@@ -116,7 +115,7 @@ export default function AdminDashboard() {
       value: formatMoney(allTime.totalRevenue),
       change: formatChange(comparison.revenue),
       trend: Number(comparison.revenue || 0) >= 0 ? "up" : "down",
-      icon: DollarSign,
+      icon: null,
       color: "text-orange-600",
       bg: "bg-orange-50",
     },
@@ -124,14 +123,23 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6 p-6 md:p-8">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Dashboard Overview</h1>
-          <p className="text-gray-600">Live database snapshot for {report?.period?.label || "this week"}.</p>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 -mx-6 px-6 py-4 bg-[var(--brand-surface)]/80 backdrop-blur border-b border-gray-200/60">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+              Dashboard Overview
+            </h1>
+            <p className="text-gray-600">
+              Live database snapshot for {report?.period?.label || "last 7 days"}.
+            </p>
+          </div>
+          <p className="text-xs text-gray-500 font-medium">
+            {lastUpdated
+              ? `Updated ${lastUpdated.toLocaleTimeString()}`
+              : "Waiting for first update"}
+          </p>
         </div>
-        <p className="text-xs text-gray-500 font-medium">
-          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : "Waiting for first update"}
-        </p>
       </div>
 
       {error && (
@@ -147,19 +155,30 @@ export default function AdminDashboard() {
 
           return (
             <Card key={stat.title}>
-              <CardContent className="p-6">
+              <CardContent className="!pt-5 pb-6 px-6">
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">{stat.title}</p>
-                    <p className="text-2xl mt-2">{stat.value}</p>
-                    <div className="flex items-center gap-1 mt-2">
+                    <p className="text-base sm:text-lg font-semibold text-gray-600">{stat.title}</p>
+                    <p className="text-xl sm:text-2xl mt-2 font-bold">
+                      {stat.title === "Total Revenue" ? (
+                        <span className="inline-flex items-baseline gap-1">
+                          <span className="text-base font-semibold text-gray-900">PHP</span>
+                          <span className="text-xl sm:text-2xl font-bold text-gray-900">
+                            {String(stat.value).replace(/^PHP\s*/, "")}
+                          </span>
+                        </span>
+                      ) : (
+                        stat.value
+                      )}
+                    </p>
+                    <div className="flex items-center gap-1 mt-2 text-xs sm:text-sm">
                       <TrendIcon
-                        className={`w-4 h-4 ${
+                        className={`w-3 h-3 ${
                           stat.trend === "up" ? "text-green-600" : "text-red-600"
                         }`}
                       />
                       <span
-                        className={`text-sm ${
+                        className={`font-medium ${
                           stat.trend === "up" ? "text-green-600" : "text-red-600"
                         }`}
                       >
@@ -167,8 +186,12 @@ export default function AdminDashboard() {
                       </span>
                     </div>
                   </div>
-                  <div className={`p-3 rounded-lg ${stat.bg}`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className={`rounded-lg ${stat.title === "Total Revenue" ? "bg-green-50" : stat.bg} p-3 mt-1`}>
+                    {stat.title === "Total Revenue" ? (
+                      <span className="inline-flex h-5 w-5 items-center justify-center text-orange-600 text-base font-bold leading-none">₱</span>
+                    ) : (
+                      stat.icon ? <Icon className={`w-5 h-5 ${stat.color}`} /> : null
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -180,7 +203,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Revenue This Week</CardTitle>
+            <CardTitle>Revenue Last 7 Days</CardTitle>
           </CardHeader>
           <CardContent>
             <SimpleLineChart data={revenueTrend} xKey="label" yKey="revenue" />
@@ -189,7 +212,7 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Orders This Week</CardTitle>
+            <CardTitle>Orders Last 7 Days</CardTitle>
           </CardHeader>
           <CardContent>
             <SimpleBarChart data={ordersTrend} xKey="label" yKey="orders" />
@@ -201,42 +224,48 @@ export default function AdminDashboard() {
         <CardHeader>
           <CardTitle>Recent Orders</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4">Order ID</th>
-                  <th className="text-left py-3 px-4">Customer</th>
-                  <th className="text-left py-3 px-4 hidden md:table-cell">Date</th>
-                  <th className="text-left py-3 px-4">Amount</th>
-                  <th className="text-left py-3 px-4">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentOrders.map((order) => (
-                  <tr key={order._id} className="border-b last:border-0">
-                    <td className="py-3 px-4">{order.referenceNumber}</td>
-                    <td className="py-3 px-4">{order.customerName}</td>
-                    <td className="py-3 px-4 hidden md:table-cell">
-                      {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "-"}
-                    </td>
-                    <td className="py-3 px-4">{formatMoney(order.total)}</td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-block px-2 py-1 rounded-full text-xs ${statusColor(order.status)}`}>
-                        {order.status}
-                      </span>
-                    </td>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto rounded-md border border-slate-200">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 bg-slate-50 text-xs uppercase tracking-[0.16em] text-slate-500 border-b">
+                <tr>
+                    <th className="text-left py-4 px-5 min-w-[160px]">Order ID</th>
+                    <th className="text-left py-4 px-5 min-w-[160px]">Customer</th>
+                    <th className="text-left py-4 px-5 min-w-[120px] hidden md:table-cell">Date</th>
+                    <th className="text-left py-4 px-5 min-w-[120px]">Amount</th>
+                    <th className="text-left py-4 px-5 min-w-[120px]">Status</th>
                   </tr>
-                ))}
-                {recentOrders.length === 0 && (
-                  <tr>
-                    <td className="py-8 px-4 text-center text-gray-500" colSpan={5}>
-                      No recent orders yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order) => (
+                    <tr key={order._id} className="border-b bg-white last:border-0 hover:bg-slate-50">
+                      <td className="py-4 px-5 align-top text-sm min-w-[160px]">
+                        {order.orderId || order.referenceNumber || order._id}
+                      </td>
+                      <td className="py-4 px-5 align-top text-sm min-w-[160px]">{order.customerName}</td>
+                      <td className="py-4 px-5 hidden md:table-cell align-top text-sm min-w-[120px]">
+                        {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : "-"}
+                      </td>
+                      <td className="py-4 px-5 align-top text-sm min-w-[120px]">{formatMoney(order.total)}</td>
+                      <td className="py-4 px-5 align-top text-sm min-w-[120px]">
+                        <span
+                          className={`inline-block px-2 py-1 rounded-full text-xs ${statusColor(
+                            order.status
+                          )}`}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {recentOrders.length === 0 && (
+                    <tr>
+                      <td className="py-8 px-5 text-center text-gray-500" colSpan={5}>
+                        No recent orders yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
             </table>
           </div>
         </CardContent>
@@ -244,3 +273,4 @@ export default function AdminDashboard() {
     </div>
   );
 }
+

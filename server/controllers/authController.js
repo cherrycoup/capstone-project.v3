@@ -9,13 +9,14 @@ import { signAuthToken } from "../middleware/auth.js";
 import { cleanString, isStrongPassword, normalizeEmail } from "../utils/validation.js";
 import { verifyGoogleIdToken } from "../utils/googleAuth.js";
 import { sendOtpVerificationEmail } from "../utils/emailService.js";
+import { getExpiryDate, getActiveMembership } from "../utils/membership.js";
+import { refreshCustomerMembershipIfExpired } from "./customerController.js";
 
 const SALT_ROUNDS = 12;
 const OTP_TTL_MINUTES = Number(process.env.EMAIL_OTP_TTL_MINUTES || 10);
 
 const buildDefaultMembership = ({ status = "Pending", tier = "Silver" } = {}) => {
-    const expiresAt = new Date();
-    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    const expiresAt = getExpiryDate(new Date());
 
     return {
         status,
@@ -38,20 +39,24 @@ const buildNoMembership = () => ({
     renewalCount: 0,
 });
 
-const buildCustomerPayload = (user, customer) => ({
-    id: user._id,
-    customerId: customer?._id || user.customerId || null,
-    name: user.name,
-    email: user.email,
-    phone: user.phone || customer?.contactInfo?.phone || "",
-    address: user.address || customer?.contactInfo?.address || "",
-    profileImageUrl: user.profileImageUrl || customer?.profileImageUrl || "",
-    role: user.role,
-    memberRole: customer?.membership?.status === "Active" ? "Member" : "Guest",
-    membership: customer?.membership || buildNoMembership(),
-    emailVerified: Boolean(user.emailVerified),
-    type: "customer",
-});
+const buildCustomerPayload = (user, customer) => {
+    const activeMembership = getActiveMembership(customer);
+
+    return {
+        id: user._id,
+        customerId: customer?._id || user.customerId || null,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || customer?.contactInfo?.phone || "",
+        address: user.address || customer?.contactInfo?.address || "",
+        profileImageUrl: user.profileImageUrl || customer?.profileImageUrl || "",
+        role: user.role,
+        memberRole: activeMembership ? "Member" : "Guest",
+        membership: customer?.membership || buildNoMembership(),
+        emailVerified: Boolean(user.emailVerified),
+        type: "customer",
+    };
+};
 
 const hashToken = (token) =>
     crypto.createHash("sha256").update(String(token)).digest("hex");
@@ -144,6 +149,10 @@ const issueCustomerSession = async (user) => {
     if (customer && String(user.customerId || "") !== String(customer._id)) {
         user.customerId = customer._id;
         await user.save();
+    }
+
+    if (customer) {
+        await refreshCustomerMembershipIfExpired(customer);
     }
 
     const payload = buildCustomerPayload(user, customer);
@@ -306,6 +315,10 @@ export const getCurrentSession = async (req, res) => {
                 customer = await Customer.findOne({ "contactInfo.email": user.email });
             }
 
+            if (customer) {
+                await refreshCustomerMembershipIfExpired(customer);
+            }
+
             return res.status(200).json({
                 success: true,
                 user: buildCustomerPayload(user, customer),
@@ -444,8 +457,10 @@ export const googleCustomerAuth = async (req, res) => {
         }
 
         let user = await User.findOne({ email, role: "customer" });
+        let isNewGoogleRegistration = false;
 
         if (!user) {
+            isNewGoogleRegistration = true;
             const customer = await getOrCreateCustomerProfile({
                 name,
                 email,
@@ -463,7 +478,7 @@ export const googleCustomerAuth = async (req, res) => {
                 customerId: customer._id,
                 authProvider: "google",
                 googleId: googleProfile.googleId,
-                emailVerified: true,
+                emailVerified: false,
             });
 
         } else {
@@ -498,18 +513,40 @@ export const googleCustomerAuth = async (req, res) => {
 
         const session = await issueCustomerSession(user);
 
+        if (isNewGoogleRegistration) {
+            const verificationEmailSent = await sendRegistrationOtp(user);
+
+            return res.status(201).json({
+                success: true,
+                requiresOtp: true,
+                message: verificationEmailSent
+                    ? "Google registration successful. Verification code sent to your email."
+                    : "Google registration successful, but verification email could not be sent.",
+                verificationEmailSent,
+                ...session,
+            });
+        }
+
         return res.status(200).json({
             success: true,
             message: "Google authentication successful",
             ...session,
         });
     } catch (error) {
+        // Log only safe details (no token/PII) to prevent sensitive data leakage
+        // in logs accessible to operations/support teams
+        console.error("[GOOGLE_AUTH] Request failed:", {
+            message: error?.message,
+            statusCode: error?.statusCode,
+        });
+
         return res.status(error.statusCode || 500).json({
             success: false,
             message: error.statusCode ? error.message : "Internal server error",
         });
     }
 };
+
 
 /**
  * Legacy Login (for backward compatibility)

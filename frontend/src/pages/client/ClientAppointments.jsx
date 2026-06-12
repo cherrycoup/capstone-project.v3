@@ -36,18 +36,6 @@ const TIME_SLOTS = [
 
 const SERVICES = ["Consultation", "Installation", "Maintenance", "Repair", "Inspection"];
 
-const UNAVAILABLE_DATES = [
-  new Date(2026, 0, 15),
-  new Date(2026, 0, 20),
-  new Date(2026, 0, 25),
-  new Date(2026, 1, 1),
-];
-
-const isSameCalendarDay = (firstDate, secondDate) =>
-  firstDate.getFullYear() === secondDate.getFullYear() &&
-  firstDate.getMonth() === secondDate.getMonth() &&
-  firstDate.getDate() === secondDate.getDate();
-
 const formatDate = (value) =>
   value.toLocaleDateString(undefined, {
     weekday: "long",
@@ -67,9 +55,11 @@ export default function ClientAppointments() {
   const [notes, setNotes] = useState("");
   const [availableSlots, setAvailableSlots] = useState(TIME_SLOTS);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [unavailableDates, setUnavailableDates] = useState([]);
 
   const handleDateSelect = (nextDate) => {
     setDate(nextDate);
+    setTimeSlot("");
     if (!nextDate) {
       setAvailableSlots(TIME_SLOTS);
     }
@@ -97,6 +87,25 @@ export default function ClientAppointments() {
     fetchSlots();
   }, [date]);
 
+  useEffect(() => {
+    const fetchBlockedAndBookedDates = async () => {
+      try {
+        const [blockedRes, bookedRes] = await Promise.all([
+          appointmentsAPI.getBlockedDates(),
+          appointmentsAPI.getFullyBookedDates()
+        ]);
+        const blocked = (blockedRes.data.data || []);
+        const booked = (bookedRes.data.data || []).map((dateValue) => `${dateValue}`);
+        
+        setUnavailableDates([...blocked, ...booked]);
+      } catch (error) {
+        console.error("Error loading date information:", error);
+      }
+    };
+
+    fetchBlockedAndBookedDates();
+  }, []);
+
   const isDateUnavailable = (checkDate) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -105,9 +114,8 @@ export default function ClientAppointments() {
       return true;
     }
 
-    return UNAVAILABLE_DATES.some((unavailableDate) =>
-      isSameCalendarDay(checkDate, unavailableDate)
-    );
+    const checkDateKey = checkDate.toISOString().slice(0, 10);
+    return unavailableDates.includes(checkDateKey);
   };
 
 const handleSubmit = async (event) => {
@@ -132,12 +140,8 @@ const handleSubmit = async (event) => {
         address: user?.address || ""
       }
     };
-    
-    console.log("Submitting appointment:", appointmentData);
-    console.log("Current user:", user);
-    
+
     const response = await appointmentsAPI.create(appointmentData);
-    console.log("Appointment creation response:", response);
 
     toast.success("Appointment booked successfully!");
 
@@ -156,12 +160,12 @@ const handleSubmit = async (event) => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold">Book an Appointment</h2>
+        <h2 className="text-2xl font-bold sm:text-3xl">Book an Appointment</h2>
         <p className="text-gray-600">Schedule a consultation or service appointment</p>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div>
           <form onSubmit={handleSubmit} className="space-y-6">
             <Card>
               <CardHeader>
@@ -171,18 +175,20 @@ const handleSubmit = async (event) => {
               <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label>Appointment Date *</Label>
-                  <div className="rounded-3xl bg-gray-50 p-3 flex justify-center">
+                  <div className="flex justify-center rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
                     <Calendar
                       mode="single"
                       selected={date}
                       onSelect={handleDateSelect}
                       disabled={isDateUnavailable}
-                      className="border-gray-100"
                       modifiers={{
-                        unavailable: UNAVAILABLE_DATES,
+                        unavailable: (date) => {
+                          const checkDateKey = date.toISOString().slice(0, 10);
+                          return unavailableDates.includes(checkDateKey);
+                        }
                       }}
                       modifiersClassNames={{
-                        unavailable: "bg-transparent text-red-400 line-through opacity-70",
+                        unavailable: "bg-red-50 text-red-700 line-through opacity-80",
                       }}
                     />
                   </div>
@@ -191,7 +197,7 @@ const handleSubmit = async (event) => {
                       Selected date: <strong>{formatDate(date)}</strong>
                     </p>
                   )}
-                  <Alert className="bg-blue-50 border-blue-200 mt-2 flex gap-3">
+                  <Alert className="bg-blue-50 border-blue-200 mt-2 flex items-start gap-3">
                     <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
                     <AlertDescription className="text-blue-800 text-sm">
                       Dates with strikethrough are unavailable for booking.
@@ -201,16 +207,28 @@ const handleSubmit = async (event) => {
 
                 <div className="space-y-2">
                   <Label htmlFor="timeSlot">Time Slot *</Label>
-                  <Select value={timeSlot} onValueChange={setTimeSlot}>
+                  <Select value={timeSlot} onValueChange={(value) => {
+                    if (availableSlots.includes(value)) {
+                      setTimeSlot(value);
+                    }
+                  }}>
                     <SelectTrigger id="timeSlot">
                       <SelectValue placeholder={loadingSlots ? "Loading slots..." : "Select a time slot"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableSlots.map((slot) => (
-                        <SelectItem key={slot} value={slot}>
-                          {slot}
-                        </SelectItem>
-                      ))}
+                      {TIME_SLOTS.map((slot) => {
+                        const slotAvailable = availableSlots.includes(slot);
+                        return (
+                          <SelectItem
+                            key={slot}
+                            value={slot}
+                            disabled={!slotAvailable}
+                            className={slotAvailable ? "" : "text-gray-400 line-through opacity-60"}
+                          >
+                            {slot}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   {date && availableSlots.length === 0 && (
@@ -280,7 +298,7 @@ const handleSubmit = async (event) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Additional Notes (Optional)</Label>
+                  <Label htmlFor="notes">Notes</Label>
                   <Textarea
                     id="notes"
                     placeholder="Any specific concerns or requirements..."
@@ -298,19 +316,25 @@ const handleSubmit = async (event) => {
           </form>
         </div>
 
-        <div className="space-y-6">
+        <div className="grid gap-6 md:grid-cols-2 xl:block xl:space-y-6">
           <Card className="bg-blue-50 border-blue-200">
             <CardHeader>
               <CardTitle className="text-blue-900">Available Time Slots</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {TIME_SLOTS.map((slot) => (
-                  <div key={slot} className="flex items-center gap-2 text-sm">
-                    <Clock className="h-4 w-4 text-blue-600" />
-                    <span className="text-blue-800">{slot}</span>
-                  </div>
-                ))}
+                {TIME_SLOTS.map((slot) => {
+                  const slotAvailable = availableSlots.includes(slot);
+                  return (
+                    <div
+                      key={slot}
+                      className={`flex items-center gap-2 text-sm ${slotAvailable ? "text-blue-800" : "text-gray-500 line-through opacity-70"}`}
+                    >
+                      <Clock className="h-4 w-4 text-blue-600" />
+                      <span>{slot}</span>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -332,7 +356,7 @@ const handleSubmit = async (event) => {
           </Card>
 
           <Card className="bg-green-50 border-green-200">
-            <CardContent className="pt-6">
+            <CardContent className="px-4 py-5 sm:px-6 sm:py-6">
               <p className="text-sm text-green-800">
                 <strong>Note:</strong> All appointments are subject to availability.
                 You will receive a confirmation email within 24 hours.

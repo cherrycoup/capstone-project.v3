@@ -5,19 +5,50 @@ import { useAuth } from "./AuthContext.jsx";
 const CartContext = createContext();
 
 const getProductStock = (product) => Number(product?.stockLevel ?? product?.stock ?? 0);
-const getProductPrice = (product) => Number(product?.srp ?? product?.price ?? 0);
+const getBaseProductPrice = (product) => Number(product?.srp ?? product?.price ?? 0);
+const roundMoney = (value) => Math.round(Number(value || 0) * 100) / 100;
+
+const getMembershipDiscountRate = (user) => {
+  if (!user) return 0;
+  if (user?.memberRole === "Member") return 0.4;
+  return 0;
+};
+
+const getProductPrice = (product, user) => {
+  const basePrice = getBaseProductPrice(product);
+  const discountRate = getMembershipDiscountRate(user);
+  return roundMoney(basePrice * (1 - discountRate));
+};
 
 export const CartProvider = ({ children }) => {
   const { user } = useAuth();
   const [cart, setCart] = useState([]);
   const [quantities, setQuantities] = useState({});
 
-  // Clear cart when user changes/logs out
+  // Clear cart when user logs out
   useEffect(() => {
     if (!user) {
       setCart([]);
       setQuantities({});
     }
+  }, [user]);
+
+  // Reprice existing cart items when membership status changes
+  useEffect(() => {
+    if (!user) return;
+
+    setCart((prev) => prev.map((item) => {
+      const nextPrice = getProductPrice(item, user);
+      if (nextPrice === item.price) {
+        return item;
+      }
+
+      return {
+        ...item,
+        price: nextPrice,
+        subtotal: roundMoney(nextPrice * item.quantity),
+      };
+    }));
   }, [user]);
 
   const addToCart = (product, quantity = 1) => {
@@ -34,14 +65,14 @@ export const CartProvider = ({ children }) => {
       return false;
     }
 
-    const price = getProductPrice(product);
+    const price = getProductPrice(product, user);
     const cartItem = {
       ...product,
       name: product.productName || product.name,
       price,
       stockLevel: stock,
       quantity: Math.min(safeQuantity, stock),
-      subtotal: price * Math.min(safeQuantity, stock)
+      subtotal: roundMoney(price * Math.min(safeQuantity, stock)),
     };
     
     setCart(prev => {
@@ -51,7 +82,7 @@ export const CartProvider = ({ children }) => {
 
         return prev.map(item => 
           item._id === product._id 
-            ? { ...item, stockLevel: stock, quantity: nextQuantity, subtotal: nextQuantity * price }
+            ? { ...item, stockLevel: stock, quantity: nextQuantity, price, subtotal: roundMoney(nextQuantity * price) }
             : item
         );
       }

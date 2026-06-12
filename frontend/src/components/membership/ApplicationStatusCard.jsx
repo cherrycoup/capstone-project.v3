@@ -1,22 +1,21 @@
 import { AlertCircle, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { getTierDetails, getDaysUntilExpiration, isMembershipExpired } from '../../utils/membership';
+import { getDaysUntilExpiration, isMembershipExpired } from '../../utils/membership';
 
 const STATUS_ICONS = {
     Pending: Clock,
     Approved: CheckCircle,
     Active: CheckCircle,
     Rejected: XCircle,
-    Expired: AlertCircle,
-    Suspended: AlertCircle
+    Expired: AlertCircle
 };
 
 export default function ApplicationStatusCard({ membership, onRenew, onReapply }) {
     if (!membership) {
         return (
             <Card className="border-gray-200">
-                <CardContent className="pt-6">
+                <CardContent className="px-4 py-5 sm:px-6 sm:py-6">
                     <p className="text-center text-gray-600">
                         No membership information available
                     </p>
@@ -25,12 +24,12 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
         );
     }
 
-    const tierDetails = getTierDetails(membership.tier);
-    const StatusIcon = STATUS_ICONS[membership.status] || AlertCircle;
     const isExpired = isMembershipExpired(membership);
+    const StatusIcon = STATUS_ICONS[isExpired ? 'Expired' : membership.status] || AlertCircle;
     const daysRemaining = getDaysUntilExpiration(membership.expiresAt);
 
     const getStatusColor = () => {
+        if (isExpired) return 'bg-gray-50 border-gray-200';
         switch (membership.status) {
             case 'Approved':
             case 'Active':
@@ -38,7 +37,6 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
             case 'Pending':
                 return 'bg-yellow-50 border-yellow-200';
             case 'Rejected':
-            case 'Suspended':
                 return 'bg-red-50 border-red-200';
             case 'Expired':
                 return 'bg-gray-50 border-gray-200';
@@ -48,6 +46,7 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
     };
 
     const getTextColor = () => {
+        if (isExpired) return 'text-gray-900';
         switch (membership.status) {
             case 'Approved':
             case 'Active':
@@ -55,7 +54,6 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
             case 'Pending':
                 return 'text-yellow-900';
             case 'Rejected':
-            case 'Suspended':
                 return 'text-red-900';
             case 'Expired':
                 return 'text-gray-900';
@@ -66,39 +64,35 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
 
     return (
         <Card className={`${getStatusColor()} border-2`}>
-            <CardHeader>
-                <div className="flex items-start justify-between">
+            <CardHeader className="p-4 sm:p-5 lg:p-6">
+                <div className="flex items-center justify-between gap-4">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
                             <StatusIcon className={`h-6 w-6 ${getTextColor()}`} />
                             <CardTitle className={getTextColor()}>
-                                {membership.status}
+                                {isExpired ? 'Expired' : membership.status}
                             </CardTitle>
-                            {membership.status === 'Active' && (
-                                <span className={`text-xs font-semibold px-3 py-1 rounded-full`}
-                                    style={{ backgroundColor: tierDetails.displayColor, color: 'white' }}>
-                                    {tierDetails.displayIcon} {membership.tier}
+                            {!isExpired && membership.status === 'Active' && (
+                                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-900 text-white">
+                                    {membership.tier || 'Member'}
                                 </span>
                             )}
                         </div>
                         <CardDescription className={getTextColor()}>
-                            {membership.status === 'Pending' && (
-                                'Your application is under review. We will notify you within 24-48 hours.'
+                            {isExpired && (
+                                'Your membership has expired. Apply again to regain benefits.'
                             )}
-                            {membership.status === 'Active' && (
+                            {!isExpired && membership.status === 'Pending' && (
+                                'Your application is under review. Activation will be set once your order is completed.'
+                            )}
+                            {!isExpired && membership.status === 'Active' && (
                                 `Your membership is active and benefits are available`
                             )}
-                            {membership.status === 'Approved' && (
-                                'Your membership has been approved! Activate it to enjoy benefits.'
+                            {!isExpired && membership.status === 'Approved' && (
+                                'Your membership has been approved. Activation will be set once your order is completed.'
                             )}
-                            {membership.status === 'Rejected' && (
+                            {!isExpired && membership.status === 'Rejected' && (
                                 'Your application was not approved. You can submit a new application.'
-                            )}
-                            {membership.status === 'Expired' && (
-                                'Your membership has expired. Renew to continue enjoying benefits.'
-                            )}
-                            {membership.status === 'Suspended' && (
-                                'Your membership is currently suspended. Please contact support.'
                             )}
                         </CardDescription>
                     </div>
@@ -107,18 +101,14 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
 
             <CardContent className="space-y-6">
                 {/* Membership Details */}
-                {(membership.status === 'Active' || membership.status === 'Approved') && (
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 p-4 rounded-lg bg-white/60">
+                {!isExpired && (membership.status === 'Active' || membership.status === 'Approved') && (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 p-4 rounded-lg bg-white/60">
                         <div>
                             <p className="text-xs text-gray-600 font-medium">Tier</p>
                             <p className="text-lg font-bold text-gray-900">{membership.tier}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-gray-600 font-medium">Loyalty Points</p>
-                            <p className="text-lg font-bold text-blue-600">{membership.pointsBalance || 0}</p>
-                        </div>
-                        <div>
-                            <p className="text-xs text-gray-600 font-medium">Joined</p>
+                            <p className="text-xs text-gray-600 font-medium">Activated</p>
                             <p className="text-sm font-medium text-gray-900">
                                 {new Date(membership.joinedAt).toLocaleDateString()}
                             </p>
@@ -139,7 +129,7 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
                             ⏰ Your membership expires in {daysRemaining} days
                         </p>
                         <p className="text-xs text-yellow-800 mt-1">
-                            Renew now to maintain your benefits without interruption
+                            Consider applying again if you want to retain benefits
                         </p>
                     </div>
                 )}
@@ -151,7 +141,7 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
                             Expired on {new Date(membership.expiresAt).toLocaleDateString()}
                         </p>
                         <p className="text-xs text-gray-700 mt-1">
-                            Your membership is no longer active. Renew to regain access to member benefits.
+                            Your membership is no longer active. Apply again to regain access to member benefits.
                         </p>
                     </div>
                 )}
@@ -170,16 +160,10 @@ export default function ApplicationStatusCard({ membership, onRenew, onReapply }
                         </Button>
                     )}
 
-                    {(membership.status === 'Active' || isExpired) && onRenew && (
+                    {(isExpired || membership.status === 'Expired') && onRenew && (
                         <Button onClick={onRenew} variant="outline" className="flex-1 sm:flex-none">
-                            {isExpired ? 'Renew Membership' : 'Renew Early'}
+                            Apply Again
                         </Button>
-                    )}
-
-                    {membership.status === 'Suspended' && (
-                        <div className="text-center py-2 text-sm text-red-600 flex-1">
-                            Contact support@jbmelectro.com for assistance
-                        </div>
                     )}
                 </div>
             </CardContent>

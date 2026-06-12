@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
-import { Calendar as CalendarIcon, Clock, Mail, MapPin, Phone, UserRound, Wrench } from "lucide-react";
+import { AlertCircle, Calendar as CalendarIcon, CheckCircle, Clock, Mail, MapPin, Phone, UserRound, Wrench } from "lucide-react";
 import { Badge } from "../../components/ui/badge.jsx";
 import { Button } from "../../components/ui/button.jsx";
 import { Calendar } from "../../components/ui/calendar.jsx";
@@ -30,6 +30,9 @@ export default function Appointments() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState("all");
+  const [blockedDates, setBlockedDates] = useState([]);
+  const [fullyBookedDates, setFullyBookedDates] = useState([]);
 
   async function fetchAppointments() {
     try {
@@ -45,6 +48,19 @@ export default function Appointments() {
 
   useEffect(() => {
     fetchAppointments();
+    // fetch blocked dates and fully booked dates for calendar
+    (async () => {
+      try {
+        const [blockedRes, bookedRes] = await Promise.all([
+          appointmentsAPI.getBlockedDates(),
+          appointmentsAPI.getFullyBookedDates()
+        ]);
+        setBlockedDates(blockedRes.data.data || []);
+        setFullyBookedDates(bookedRes.data.data || []);
+      } catch (err) {
+        console.error('Failed to load date information', err);
+      }
+    })();
   }, []);
 
   const handleUpdateStatus = async () => {
@@ -68,58 +84,255 @@ export default function Appointments() {
   const getPhone = (appointment) => appointment.contactInfo?.phone || appointment.customerId?.contactInfo?.phone || "N/A";
   const getLocation = (appointment) => appointment.customerId?.contactInfo?.address || "No address provided";
   const getService = (appointment) => appointment.service || appointment.serviceType || "Electrical Service";
-  const getDateValue = (appointment) => appointment.date?.split("T")[0] || "";
   const getDisplayDate = (appointment) =>
     appointment.date ? new Date(appointment.date).toLocaleDateString() : "N/A";
   const getDisplayTime = (appointment) => appointment.timeSlot || appointment.time || "N/A";
   const getAppointmentId = (appointment) => `APT-${appointment._id?.slice(-6).toUpperCase() || "000000"}`;
 
-  const today = new Date().toISOString().split("T")[0];
-  const todayAppointments = appointmentsList.filter((appointment) => getDateValue(appointment) === today);
-  const upcomingAppointments = appointmentsList.filter(
-    (appointment) => appointment.date && new Date(appointment.date) > new Date() && appointment.status !== "Cancelled"
+  const formatDate = (value) =>
+    value.toLocaleDateString(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+  // Get all appointment dates for calendar display
+  const appointmentDates = appointmentsList
+    .filter(apt => apt.date && (apt.status === "Scheduled" || apt.status === "Confirmed"))
+    .map(apt => apt.date.split("T")[0]);
+
+  // Memoize modifier functions to prevent unnecessary re-renders and event delays
+  const blockedModifier = useCallback((date) => {
+    const dateStr = date.toISOString().slice(0, 10);
+    return blockedDates.includes(dateStr);
+  }, [blockedDates]);
+
+  const fullyBookedModifier = useCallback((date) => {
+    const dateStr = date.toISOString().slice(0, 10);
+    return fullyBookedDates.includes(dateStr) && !blockedDates.includes(dateStr);
+  }, [fullyBookedDates, blockedDates]);
+
+  const appointmentModifier = useCallback((date) => {
+    const dateStr = date.toISOString().slice(0, 10);
+    return appointmentDates.includes(dateStr) && !blockedDates.includes(dateStr) && !fullyBookedDates.includes(dateStr);
+  }, [appointmentDates, blockedDates, fullyBookedDates]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const sortedAppointments = [...appointmentsList].sort((a, b) => {
+    const aCreated = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bCreated = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aCreated !== bCreated) {
+      return bCreated - aCreated;
+    }
+
+    const aDate = a.date ? new Date(a.date).getTime() : 0;
+    const bDate = b.date ? new Date(b.date).getTime() : 0;
+    if (aDate !== bDate) {
+      return bDate - aDate;
+    }
+
+    const aTime = a.timeSlot || a.time || "";
+    const bTime = b.timeSlot || b.time || "";
+    return bTime.localeCompare(aTime);
+  });
+
+  const upcomingAppointments = sortedAppointments.filter((appointment) => {
+    const appointmentDate = appointment.date ? new Date(appointment.date) : null;
+    return (
+      appointmentDate &&
+      appointmentDate >= today &&
+      appointment.status !== "Cancelled"
+    );
+  });
+
+  const todayAppointments = sortedAppointments.filter((appointment) => {
+    const appointmentDate = appointment.date ? new Date(appointment.date) : null;
+    return (
+      appointmentDate &&
+      appointmentDate.getFullYear() === today.getFullYear() &&
+      appointmentDate.getMonth() === today.getMonth() &&
+      appointmentDate.getDate() === today.getDate()
+    );
+  });
+
+  const todayReminderAppointments = todayAppointments.filter(
+    (appointment) =>
+      appointment.status === "Scheduled" || appointment.status === "Confirmed"
   );
+
+  const filteredAppointments = sortedAppointments.filter((appointment) => {
+    if (viewMode === "upcoming") {
+      return upcomingAppointments.some((item) => item._id === appointment._id);
+    }
+    if (viewMode === "today") {
+      return todayAppointments.some((item) => item._id === appointment._id);
+    }
+    return true;
+  });
+
+  const listHeading =
+    viewMode === "today"
+      ? "Today's Appointments"
+      : viewMode === "upcoming"
+      ? "Upcoming Appointments"
+      : "All Appointments";
 
   if (loading) {
     return <div className="p-6">Loading appointments...</div>;
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 sm:p-6">
       <div>
-        <h1 className="text-2xl md:text-3xl mb-2">Appointment Scheduling</h1>
+        <h1 className="text-2xl md:text-3xl font-bold mb-2">Appointment Management</h1>
         <p className="text-gray-500">Manage customer appointments and schedules</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat title="Today's Appointments" value={todayAppointments.length} />
-        <Stat title="Upcoming" value={upcomingAppointments.length} />
-        <Stat title="Pending" value={appointmentsList.filter((a) => a.status === "Scheduled").length} />
-        <Stat title="Completed" value={appointmentsList.filter((a) => a.status === "Completed").length} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Stat
+          title="Today's Appointments"
+          value={todayAppointments.length}
+          icon={<CalendarIcon className="h-8 w-8 text-blue-600" />}
+        />
+        <Stat
+          title="Upcoming"
+          value={upcomingAppointments.length}
+          icon={<Clock className="h-8 w-8 text-slate-500" />}
+        />
+        <Stat
+          title="Pending"
+          value={appointmentsList.filter((a) => a.status === "Scheduled").length}
+          icon={<AlertCircle className="h-8 w-8 text-amber-600" />}
+        />
+        <Stat
+          title="Completed"
+          value={appointmentsList.filter((a) => a.status === "Completed").length}
+          icon={<CheckCircle className="h-8 w-8 text-green-600" />}
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1 border border-slate-200 shadow-sm">
+      {todayReminderAppointments.length > 0 && (
+        <div className="rounded-3xl border border-rose-200 bg-rose-50 p-4 text-rose-900">
+          <p className="text-sm font-semibold">Reminder</p>
+          <p className="mt-1 text-base">
+            You have {todayReminderAppointments.length} appointment{todayReminderAppointments.length > 1 ? "s" : ""} scheduled for today.
+          </p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 rounded-3xl border border-slate-200 bg-white p-3 shadow-sm">
+        <span className="text-xs font-semibold text-slate-700">View:</span>
+        {[
+          { key: "all", label: "All appointments" },
+          { key: "today", label: "Today" },
+          { key: "upcoming", label: "Upcoming" },
+        ].map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            className={`rounded-full px-3 py-1.5 text-xs transition ${
+              viewMode === option.key
+                ? "bg-slate-950 text-white"
+                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+            onClick={() => setViewMode(option.key)}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
+        <Card className="border border-slate-200 shadow-sm">
           <CardHeader>
-            <CardTitle>Calendar</CardTitle>
+            <CardTitle>Mark Dates Unavailable</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={setSelectedDate}
-              className="mx-auto rounded-2xl border border-gray-300 bg-gray-2cd00 text-center"
-            />
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm text-slate-600">Select a date to block or unblock it from booking</p>
+              <div className="flex justify-center rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:p-4">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  modifiers={{
+                    blocked: blockedModifier,
+                    fullyBooked: fullyBookedModifier,
+                    appointment: appointmentModifier,
+                  }}
+                  modifiersClassNames={{
+                    blocked: "bg-red-50 text-red-700 line-through opacity-80",
+                    fullyBooked: "bg-amber-50 text-amber-700 font-semibold",
+                    appointment: "bg-green-50 text-green-700 font-semibold"
+                  }}
+                />
+              </div>
+              <div className="grid gap-2 text-xs text-slate-600 sm:grid-cols-3">
+                <CalendarLegend className="bg-green-100" label="Booked" />
+                <CalendarLegend className="bg-amber-100" label="Fully booked" />
+                <CalendarLegend className="bg-red-100" label="Blocked" />
+              </div>
+              {selectedDate && (
+                <p className="text-sm text-slate-600 mt-2">
+                  Selected: <strong>{formatDate(selectedDate)}</strong>
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2 pt-4 border-t border-slate-200">
+              {selectedDate && (
+                <>
+                  {blockedDates.includes(selectedDate.toISOString().slice(0, 10)) ? (
+                    <Button
+                      onClick={async () => {
+                        const dateKey = selectedDate.toISOString().slice(0, 10);
+                        try {
+                          await appointmentsAPI.unblockDate(dateKey);
+                          setBlockedDates((p) => (p || []).filter((d) => d !== dateKey));
+                          toast.success('Date unblocked successfully');
+                        } catch (err) {
+                          console.error(err);
+                          toast.error('Failed to unblock date');
+                        }
+                      }}
+                      className="w-full h-10 rounded-full bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Unblock Date
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={async () => {
+                        const dateKey = selectedDate.toISOString().slice(0, 10);
+                        try {
+                          await appointmentsAPI.blockDate(dateKey, 'Blocked by admin');
+                          setBlockedDates((p) => Array.from(new Set([...(p || []), dateKey])));
+                          toast.success('Date blocked successfully');
+                        } catch (err) {
+                          console.error(err);
+                          toast.error('Failed to block date');
+                        }
+                      }}
+                      className="w-full h-10 rounded-full bg-red-600 text-white hover:bg-red-700"
+                    >
+                      Block Date
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
+        <Card>
           <CardHeader>
-            <CardTitle>All Appointments</CardTitle>
+            <CardTitle>{listHeading}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {appointmentsList.map((appointment) => (
+              {filteredAppointments.map((appointment) => (
                 <button
                   key={appointment._id}
                   type="button"
@@ -158,8 +371,8 @@ export default function Appointments() {
                   </div>
                 </button>
               ))}
-              {appointmentsList.length === 0 && (
-                <div className="py-8 text-center text-gray-500">No appointments found.</div>
+              {filteredAppointments.length === 0 && (
+                <div className="py-8 text-center text-gray-500">No appointments found for this view.</div>
               )}
             </div>
           </CardContent>
@@ -201,7 +414,7 @@ export default function Appointments() {
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Update Status</p>
                   <div className="mt-4 space-y-3">
                     <Select value={newStatus} onValueChange={setNewStatus}>
-                      <SelectTrigger className="h-11 rounded-2xl border-gray-300 bg-gray-2cd00">
+                      <SelectTrigger className="h-11 rounded-2xl border-gray-300 bg-gray-200">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -246,7 +459,7 @@ export default function Appointments() {
 
                 <div className="rounded-3xl border border-slate-200 p-5">
                   <h3 className="font-semibold text-slate-950">Notes</h3>
-                  <p className="mt-3 min-h-28 rounded-2xl border border-gray-300 bg-gray-2cd00 p-4 text-sm leading-6 text-slate-700">
+                  <p className="mt-3 min-h-28 rounded-2xl border border-gray-300 bg-gray-200 p-4 text-sm leading-6 text-slate-700">
                     {selectedAppointment.notes || "No notes provided"}
                   </p>
                 </div>
@@ -259,12 +472,19 @@ export default function Appointments() {
   );
 }
 
-function Stat({ title, value }) {
+function Stat({ title, value, icon }) {
   return (
     <Card>
-      <CardContent className="p-6">
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-3xl mt-2">{value}</p>
+      <CardContent className="flex min-h-40 items-center p-6">
+        <div className="flex w-full items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm text-gray-500">{title}</p>
+            <p className="mt-3 text-3xl font-bold text-slate-900">{value}</p>
+          </div>
+          <div className="shrink-0">
+            {icon}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -293,5 +513,14 @@ function SummaryItem({ icon, label, value }) {
         <p className="truncate text-sm font-semibold text-slate-950">{value}</p>
       </div>
     </div>
+  );
+}
+
+function CalendarLegend({ className, label }) {
+  return (
+    <span className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5">
+      <span className={`h-2.5 w-2.5 rounded-full ${className}`} />
+      {label}
+    </span>
   );
 }

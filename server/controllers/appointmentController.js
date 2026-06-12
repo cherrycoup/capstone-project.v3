@@ -1,4 +1,5 @@
 import Appointment from "../models/Appointment.js";
+import BlockedDate from "../models/BlockedDate.js";
 import Customer from "../models/Customer.js";
 import User from "../models/User.js";
 import {
@@ -112,7 +113,7 @@ export const getAllAppointments = async (req, res) => {
     try {
         const appointments = await Appointment.find()
             .populate("customerId", "name contactInfo role")
-            .sort({ date: 1, timeSlot: 1 });
+            .sort({ createdAt: -1, date: 1, timeSlot: 1 });
 
         res.status(200).json({
             success: true,
@@ -215,9 +216,9 @@ export const getMyAppointments = async (req, res) => {
         const customer = await getAuthenticatedCustomer(req.user);
 
         if (!customer) {
-            return res.status(404).json({
-                success: false,
-                message: "Customer profile not found",
+            return res.status(200).json({
+                success: true,
+                data: [],
             });
         }
 
@@ -537,6 +538,188 @@ export const getAvailableSlots = async (req, res) => {
             success: false,
             message: "Internal server error",
         });
+    }
+};
+
+/**
+ * Get confirmed appointment dates across all customers
+ */
+export const getConfirmedAppointmentDates = async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const query = {
+            status: "Confirmed",
+            date: { $gte: today },
+        };
+
+        const startRange = getDayRange(req.query.startDate);
+        const endRange = getDayRange(req.query.endDate);
+
+        if (startRange) {
+            query.date.$gte = startRange.start;
+        }
+
+        if (endRange) {
+            query.date.$lte = endRange.end;
+        }
+
+        const appointments = await Appointment.find(query).select("date -_id");
+        const uniqueDateStrings = [...new Set(appointments.map((appointment) => appointment.date.toISOString().slice(0, 10)))];
+
+        res.status(200).json({
+            success: true,
+            data: uniqueDateStrings,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+
+/**
+ * Get fully booked appointment dates across all customers
+ */
+export const getFullyBookedAppointmentDates = async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const startRange = getDayRange(req.query.startDate);
+        const endRange = getDayRange(req.query.endDate);
+
+        const match = {
+            status: { $ne: "Cancelled" },
+            date: { $gte: today },
+        };
+
+        if (startRange) {
+            match.date.$gte = startRange.start;
+        }
+
+        if (endRange) {
+            match.date.$lte = endRange.end;
+        }
+
+        const bookedDates = await Appointment.aggregate([
+            { $match: match },
+            {
+                $addFields: {
+                    dateKey: {
+                        $dateToString: {
+                            format: "%Y-%m-%d",
+                            date: "$date",
+                        },
+                    },
+                },
+            },
+            {
+                $group: {
+                    _id: "$dateKey",
+                    timeSlots: { $addToSet: "$timeSlot" },
+                },
+            },
+            {
+                $project: {
+                    date: "$_id",
+                    slotCount: { $size: "$timeSlots" },
+                },
+            },
+            {
+                $match: {
+                    slotCount: ALL_SLOTS.length,
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    date: 1,
+                },
+            },
+        ]);
+
+        let dates = bookedDates.map((entry) => entry.date);
+
+        // include admin-blocked dates in the result
+        try {
+            const blocked = await BlockedDate.find({}).select('date -_id');
+            const blockedStrings = (blocked || []).map((d) => d.date.toISOString().slice(0, 10));
+            dates = Array.from(new Set([...dates, ...blockedStrings]));
+        } catch (err) {
+            console.error('Error loading blocked dates:', err);
+        }
+
+        res.status(200).json({
+            success: true,
+            data: dates,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+
+/**
+ * Admin: add a blocked date
+ */
+export const addBlockedDate = async (req, res) => {
+    try {
+        const { date, reason } = req.body;
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        if (Number.isNaN(d.getTime())) {
+            return res.status(400).json({ success: false, message: 'Invalid date' });
+        }
+
+        const existing = await BlockedDate.findOne({ date: d });
+        if (existing) {
+            return res.status(200).json({ success: true, data: existing });
+        }
+
+        const blocked = await BlockedDate.create({ date: d, reason, createdBy: req.user?.id });
+        return res.status(201).json({ success: true, data: blocked });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+/**
+ * Admin: remove a blocked date
+ */
+export const removeBlockedDate = async (req, res) => {
+    try {
+        const dateParam = req.body?.date || req.query?.date || req.params?.date;
+        const d = new Date(dateParam);
+        d.setHours(0, 0, 0, 0);
+        if (Number.isNaN(d.getTime())) {
+            return res.status(400).json({ success: false, message: 'Invalid date' });
+        }
+
+        await BlockedDate.findOneAndDelete({ date: d });
+        return res.status(200).json({ success: true });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+};
+
+/**
+ * Admin: list blocked dates
+ */
+export const getBlockedDates = async (req, res) => {
+    try {
+        const docs = await BlockedDate.find().select('date reason -_id');
+        const dates = docs.map((d) => d.date.toISOString().slice(0, 10));
+        return res.status(200).json({ success: true, data: dates });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: 'Internal server error' });
     }
 };
 

@@ -142,6 +142,10 @@ export const customersAPI = {
         api.get(`/customers/${id}/membership/history?limit=${limit}`)
 };
 
+// Customer account password update
+customersAPI.updatePassword = (oldPassword, newPassword) =>
+    api.put(`/customers/me/password`, { oldPassword, newPassword });
+
 // MEMBERSHIP APIs
 export const membershipAPI = {
     // Customer endpoints
@@ -181,12 +185,12 @@ export const membershipAPI = {
 
 // ORDERS APIs
 export const ordersAPI = {
-    getAll: () => api.get("/orders"),
+    getAll: () => cachedGet("/orders"),
     getById: (id) => api.get(`/orders/${id}`),
     getByCustomer: (customerId) => api.get(`/orders/customer/${customerId}`),
-    create: (orderData) => api.post("/orders", orderData),
-    updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }),
-    cancel: (id) => api.put(`/orders/${id}/cancel`, {}),
+    create: (orderData) => api.post("/orders", orderData).finally(clearApiCache),
+    updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }).finally(clearApiCache),
+    cancel: (id) => api.put(`/orders/${id}/cancel`, {}).finally(clearApiCache),
     getStats: () => api.get("/orders/stats")
 };
 
@@ -204,12 +208,18 @@ export const appointmentsAPI = {
     getById: (id) => api.get(`/appointments/${id}`),
     getByCustomer: (customerId) => api.get(`/appointments/customer/${customerId}`),
     getMyAppointments: () => api.get('/appointments/my-appointments'),
+    getFullyBookedDates: (params = {}) => api.get('/appointments/fully-booked-dates', { params }),
     create: (data) => api.post('/appointments', data),
     update: (id, data) => api.put(`/appointments/${id}`, data),
     updateStatus: (id, status) => api.put(`/appointments/${id}/status`, { status }),
     delete: (id) => api.delete(`/appointments/${id}`),
     getAvailableSlots: (date) => api.get(`/appointments/available-slots?date=${encodeURIComponent(date)}`),
     getStats: () => api.get('/appointments/stats')
+    ,
+    // Blocked dates
+    blockDate: (date, reason) => api.post('/appointments/block-date', { date, reason }),
+    unblockDate: (date) => api.delete(`/appointments/block-date?date=${encodeURIComponent(date)}`),
+    getBlockedDates: () => api.get('/appointments/blocked-dates'),
 };
 
 // STAFF APIs
@@ -220,6 +230,10 @@ export const staffAPI = {
     update: (id, staffData) => api.put(`/staff/${id}`, staffData),
     updatePassword: (id, oldPassword, newPassword) =>
         api.put(`/staff/${id}/password`, { oldPassword, newPassword }),
+    adminResetPassword: (id, newPassword) =>
+        api.put(`/staff/${id}/admin-reset-password`, { newPassword }),
+    updateOwnPassword: (oldPassword, newPassword) =>
+        api.put(`/staff/me/password`, { oldPassword, newPassword }),
     delete: (id) => api.delete(`/staff/${id}`),
     deactivate: (id) => api.put(`/staff/${id}/deactivate`, {}),
     getStats: () => api.get("/staff/stats")
@@ -239,6 +253,16 @@ export const reportsAPI = {
 
         return api.get(`/reports/overview?${params.toString()}`);
     }
+};
+
+// FAQ APIs
+export const faqAPI = {
+    getAll: () => api.get('/faqs'),
+    getById: (id) => api.get(`/faqs/${id}`),
+    create: (data) => api.post('/faqs', data),
+    update: (id, data) => api.put(`/faqs/${id}`, data),
+    delete: (id) => api.delete(`/faqs/${id}`),
+    getByCategory: (category) => api.get(`/faqs/category/${category}`),
 };
 
 export default api;

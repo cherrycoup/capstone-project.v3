@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
+import BackToHomeButton from '../../components/BackToHomeButton';
 import { toast } from 'sonner';
-import logoSrc from '../../assets/logo (1).webp';
+import logoSrc from '../../assets/logo.webp';
 import { membershipAPI, packagesAPI } from '../../utils/api';
 
 const MEMBERSHIP_PACKAGES = [
@@ -29,24 +30,6 @@ const MEMBERSHIP_PACKAGES = [
         description: 'Mid-range package with increased product value',
         price: 4498,
         borderColor: '#FB923C' // Orange
-    },
-    {
-        name: 'Silver Package',
-        description: 'Larger package with higher discount allocation',
-        price: 7998,
-        borderColor: '#D1D5DB' // Gray
-    },
-    {
-        name: 'Gold Package',
-        description: 'High-value package designed for bigger savings',
-        price: 15996,
-        borderColor: '#FBBF24' // Yellow
-    },
-    {
-        name: 'Platinum Package',
-        description: 'Maximum-value package with the highest savings potential',
-        price: 35000,
-        borderColor: '#A78BFA' // Purple
     }
 ];
 
@@ -95,7 +78,7 @@ export default function MembershipApplication() {
             return;
         }
 
-        navigate('/dashboard', { state: { activeTab: 'order', membershipPackage: selectedPackageDeal } });
+        navigate('/membership/apply');
     };
 
     return (
@@ -115,12 +98,7 @@ export default function MembershipApplication() {
                             </h1>
                         </div>
                         <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                onClick={() => navigate('/dashboard')}
-                            >
-                                Back Home
-                            </Button>
+                            <BackToHomeButton />
                         </div>
                     </div>
                 </div>

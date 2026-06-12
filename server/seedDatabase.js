@@ -31,20 +31,6 @@ const seedDatabase = async () => {
         // Create Products
         const products = await Product.insertMany([
             {
-                productName: "Laptop",
-                stockLevel: 15,
-                price: 999.99,
-                description: "High-performance laptop",
-                category: "Electronics"
-            },
-            {
-                productName: "Mouse",
-                stockLevel: 50,
-                price: 29.99,
-                description: "Wireless mouse",
-                category: "Accessories"
-            },
-            {
                 productName: "Keyboard",
                 stockLevel: 30,
                 price: 79.99,
@@ -128,24 +114,8 @@ const seedDatabase = async () => {
         // Create Order Items
         const orderItems = await OrderItem.insertMany([
             {
-                orderId: orders[0]._id,
-                productId: products[0]._id,
-                productName: "Laptop",
-                price: 999.99,
-                quantity: 1,
-                subtotal: 999.99
-            },
-            {
-                orderId: orders[0]._id,
-                productId: products[1]._id,
-                productName: "Mouse",
-                price: 29.99,
-                quantity: 1,
-                subtotal: 29.99
-            },
-            {
                 orderId: orders[1]._id,
-                productId: products[3]._id,
+                productId: products[1]._id,
                 productName: "Monitor",
                 price: 299.99,
                 quantity: 1,
@@ -153,15 +123,7 @@ const seedDatabase = async () => {
             },
             {
                 orderId: orders[2]._id,
-                productId: products[1]._id,
-                productName: "Mouse",
-                price: 29.99,
-                quantity: 1,
-                subtotal: 29.99
-            },
-            {
-                orderId: orders[2]._id,
-                productId: products[2]._id,
+                productId: products[0]._id,
                 productName: "Keyboard",
                 price: 79.99,
                 quantity: 1,

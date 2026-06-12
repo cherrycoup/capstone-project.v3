@@ -1,21 +1,35 @@
 import jwt from "jsonwebtoken";
 import { isAdminRole, isStaffRole } from "../utils/validation.js";
 
-const DEVELOPMENT_SECRET = "development-only-change-me";
-
 export const getJwtSecret = () => {
     const secret = process.env.JWT_SECRET;
 
-    if (!secret || secret === "your-secret-key" || secret.includes("change-this")) {
-        if (process.env.NODE_ENV === "production") {
-            throw new Error("JWT_SECRET must be set to a strong value in production");
-        }
-
-        return secret || DEVELOPMENT_SECRET;
+    if (!secret) {
+        throw new Error("JWT_SECRET must be set");
     }
 
-    return secret;
+    // Reject placeholder secrets to fail-safe: prevents accidental deployment
+    // with development defaults that would compromise production security
+    const normalized = String(secret).trim().toLowerCase();
+    const isPlaceholder =
+        normalized === "your-secret-key" ||
+        normalized.includes("change-this") ||
+        normalized.includes("development-only-change-me");
+
+    if (isPlaceholder) {
+        throw new Error("JWT_SECRET must not be a placeholder value");
+    }
+
+    // Minimum 20 characters prevents weak keys that can be cracked via brute force;
+    // aligns with industry best practice for symmetric signing keys
+    if (String(secret).length < 20) {
+        throw new Error("JWT_SECRET is too short");
+    }
+
+    return String(secret);
 };
+
+
 
 export const signAuthToken = (payload) =>
     jwt.sign(payload, getJwtSecret(), {
@@ -84,6 +98,7 @@ export const verifyToken = (req, res, next) => {
         });
     }
 };
+
 
 /**
  * Middleware to verify user is Admin
