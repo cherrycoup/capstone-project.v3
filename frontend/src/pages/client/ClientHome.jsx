@@ -39,7 +39,10 @@ export default function ClientHome({ onNavigateTab }) {
   const [packageDeals, setPackageDeals] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const memberRoleActive = user?.memberRole === "Member";
+<<<<<<< HEAD
 
+=======
+>>>>>>> d13e14483c2ce9f213f10b2f7a73ea357e54a727
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -83,7 +86,6 @@ export default function ClientHome({ onNavigateTab }) {
         isMemberRole={memberRoleActive}
         onApply={() => navigate("/membership/apply")}
         onViewStatus={() => navigate("/membership/status")}
-        onOpenPackages={() => onNavigateTab?.("packages")}
       />
 
       <DealsSection

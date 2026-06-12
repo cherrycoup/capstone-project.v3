@@ -197,7 +197,7 @@ export default function AdminPackages() {
           <Card key={packageDeal._id}>
             <CardContent className="p-0">
               <div className="grid sm:grid-cols-[180px_1fr]">
-                <div className="aspect-[4/3] sm:aspect-auto bg-gray-100 flex items-center justify-center overflow-hidden">
+                <div className="aspect-4/3 sm:aspect-auto bg-gray-100 flex items-center justify-center overflow-hidden">
                   {packageDeal.imageUrl ? (
                     <img
                       src={packageDeal.imageUrl}
