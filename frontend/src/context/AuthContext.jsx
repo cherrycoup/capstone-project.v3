@@ -23,21 +23,36 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem("pos-token");
 
             if (!token) {
+                console.debug("[Auth] No token found in localStorage");
                 setLoading(false);
                 return;
             }
 
             try {
+                console.debug("[Auth] Verifying session with token");
                 const response = await authAPI.getSession();
                 if (!mounted) return;
 
                 const sessionUser = response.data.user;
+                console.debug("[Auth] Session verified successfully for:", sessionUser.email);
                 setUser(sessionUser);
                 localStorage.setItem("pos-user", JSON.stringify(sessionUser));
-            } catch {
+            } catch (error) {
                 if (!mounted) return;
 
-                // Always clear auth data on any error to prevent redirect loops
+                const errorStatus = error.response?.status;
+                const errorMessage = error.response?.data?.message || error.message;
+
+                if (errorStatus === 401) {
+                    console.warn("[Auth] Session verification failed (401):", errorMessage);
+                } else if (error.code === 'ECONNREFUSED') {
+                    console.warn("[Auth] Backend server not available, retaining local session");
+                    setLoading(false);
+                    return;
+                } else {
+                    console.error("[Auth] Unexpected error during session verification:", error);
+                }
+
                 setUser(null);
                 localStorage.removeItem("pos-user");
                 localStorage.removeItem("pos-token");

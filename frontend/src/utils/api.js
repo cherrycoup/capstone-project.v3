@@ -64,8 +64,13 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem("pos-user");
-            localStorage.removeItem("pos-token");
+            const isSessionEndpoint = error.config?.url?.includes('/auth/session');
+            console.warn(`[API] 401 Error - Session Endpoint: ${isSessionEndpoint}`, error.config?.url);
+            
+            if (isSessionEndpoint) {
+                localStorage.removeItem("pos-user");
+                localStorage.removeItem("pos-token");
+            }
         }
         return Promise.reject(error);
     }

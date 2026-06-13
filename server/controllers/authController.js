@@ -274,26 +274,34 @@ export const loginStaff = async (req, res) => {
 
 export const getCurrentSession = async (req, res) => {
     try {
-        if (req.user?.type === "staff") {
+        const userType = req.user?.type;
+        const userId = req.user?.id;
+        
+        logger.info(`[Session] Verifying session - Type: ${userType}, ID: ${userId}`);
+
+        if (userType === "staff") {
             const user = await getStaffAccountByToken(req.user);
 
             if (!user) {
+                logger.warn(`[Session] Staff user not found or inactive - ID: ${userId}`);
                 return res.status(401).json({
                     success: false,
                     message: "Invalid or inactive staff session",
                 });
             }
 
+            logger.info(`[Session] Staff session verified - Email: ${user.email}`);
             return res.status(200).json({
                 success: true,
                 user: buildStaffPayload(user),
             });
         }
 
-        if (req.user?.type === "customer") {
-            const user = await User.findOne({ _id: req.user.id, role: "customer" });
+        if (userType === "customer") {
+            const user = await User.findOne({ _id: userId, role: "customer" });
 
             if (!user) {
+                logger.warn(`[Session] Customer user not found in User collection - ID: ${userId}`);
                 return res.status(401).json({
                     success: false,
                     message: "Invalid customer session",
@@ -310,20 +318,27 @@ export const getCurrentSession = async (req, res) => {
             }
 
             if (customer) {
-                await refreshCustomerMembershipIfExpired(customer);
+                try {
+                    await refreshCustomerMembershipIfExpired(customer);
+                } catch (membershipError) {
+                    logger.warn(`[Session] Membership refresh failed for ${user.email}:`, membershipError.message);
+                }
             }
 
+            logger.info(`[Session] Customer session verified - Email: ${user.email}`);
             return res.status(200).json({
                 success: true,
                 user: buildCustomerPayload(user, customer),
             });
         }
 
+        logger.warn(`[Session] Invalid session - No user type provided`);
         return res.status(401).json({
             success: false,
             message: "Invalid session",
         });
     } catch (error) {
+        logger.error(`[Session] Verification failed:`, error.message);
         handleControllerError(res, error, "Auth.getCurrentSession", 500, "Internal server error");
     }
 };

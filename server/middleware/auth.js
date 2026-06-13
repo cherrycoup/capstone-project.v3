@@ -89,7 +89,18 @@ export const verifyToken = (req, res, next) => {
             });
         }
 
-        req.user = verifyAuthToken(token);
+        try {
+            req.user = verifyAuthToken(token);
+        } catch (tokenError) {
+            if (tokenError.name === 'TokenExpiredError') {
+                return res.status(401).json({
+                    success: false,
+                    message: "Token expired",
+                    code: "TOKEN_EXPIRED",
+                });
+            }
+            throw tokenError;
+        }
         next();
     } catch (error) {
         res.status(401).json({

@@ -91,13 +91,6 @@ export default function ClientTracking() {
     fetchUserData();
   }, [fetchUserData, loading]);
 
-  useEffect(() => {
-    if (!loading && !isDataLoading && orderQuery) {
-      setTrackingId(orderQuery);
-      searchById(orderQuery);
-    }
-  }, [loading, isDataLoading, orderQuery, searchById]);
-
   const searchById = useCallback((id) => {
     const normalizedId = id.trim().toLowerCase();
     const cleanedDigits = normalizedId.replace(/[^0-9]/g, "");
@@ -130,6 +123,14 @@ export default function ClientTracking() {
       matchedOrders.length > 0 ? { orders: matchedOrders } : appointment ? { appointment } : null
     );
   }, [myAppointments, myOrders]);
+
+  useEffect(() => {
+    if (!loading && !isDataLoading && orderQuery) {
+      setTrackingId(orderQuery);
+      searchById(orderQuery);
+    }
+  }, [loading, isDataLoading, orderQuery, searchById]);
+
 
   useEffect(() => {
     if (!loading && orderQuery) {
