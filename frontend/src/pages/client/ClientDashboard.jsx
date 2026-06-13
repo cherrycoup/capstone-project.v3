@@ -74,7 +74,7 @@ export default function ClientDashboard() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   // Handle hash navigation for setting active tab and location state
@@ -120,7 +120,7 @@ export default function ClientDashboard() {
 
       try {
         const [ordersResponse, appointmentsResponse] = await Promise.all([
-          user.customerId ? ordersAPI.getByCustomer(user.customerId) : Promise.resolve({ data: { data: [] } }),
+          ordersAPI.getMyOrders(),
           user?.type === "customer"
             ? appointmentsAPI.getMyAppointments()
             : Promise.resolve({ data: { data: [] } }),
@@ -199,11 +199,13 @@ export default function ClientDashboard() {
       }
     };
 
+    if (loading || !user) return;
+
     buildNotifications();
     const interval = window.setInterval(buildNotifications, 30000);
 
     return () => window.clearInterval(interval);
-  }, [user]);
+  }, [user, loading]);
 
   const handleLogout = () => {
     logout();

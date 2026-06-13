@@ -45,12 +45,12 @@ const buildOrderDateVariants = (dateString) => {
 };
 
 export default function ClientTracking() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [trackingId, setTrackingId] = useState("");
   const [searchResults, setSearchResults] = useState(undefined);
   const [myOrders, setMyOrders] = useState([]);
   const [myAppointments, setMyAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   const location = useLocation();
   const orderQuery = new URLSearchParams(location.search).get("order") || "";
@@ -59,13 +59,14 @@ export default function ClientTracking() {
     let nextOrders = [];
     let nextAppointments = [];
 
+    if (loading) {
+      return;
+    }
+
     try {
       try {
-        const customerId = user?.customerId;
-        if (customerId) {
-          const ordersResponse = await ordersAPI.getByCustomer(customerId);
-          nextOrders = ordersResponse.data.data || [];
-        }
+        const ordersResponse = await ordersAPI.getMyOrders();
+        nextOrders = ordersResponse.data.data || [];
       } catch (err) {
         void err;
       }
@@ -81,13 +82,21 @@ export default function ClientTracking() {
     } finally {
       setMyOrders(nextOrders);
       setMyAppointments(nextAppointments);
-      setLoading(false);
+      setIsDataLoading(false);
     }
-  }, [user]);
+  }, [user, loading]);
 
   useEffect(() => {
+    if (loading) return;
     fetchUserData();
-  }, [fetchUserData]);
+  }, [fetchUserData, loading]);
+
+  useEffect(() => {
+    if (!loading && !isDataLoading && orderQuery) {
+      setTrackingId(orderQuery);
+      searchById(orderQuery);
+    }
+  }, [loading, isDataLoading, orderQuery, searchById]);
 
   const searchById = useCallback((id) => {
     const normalizedId = id.trim().toLowerCase();

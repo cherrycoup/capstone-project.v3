@@ -4,6 +4,7 @@ import {
     getAllOrders,
     getOrderById,
     getOrdersByCustomer,
+    getMyOrders,
     createOrder,
     updateOrderStatus,
     getOrderStats,
@@ -16,6 +17,7 @@ const router = express.Router();
 // membership discounts and customer records are applied server-side when user is recognized
 router.post("/", optionalAuth, createOrder);
 router.get("/stats", verifyToken, verifyStaff, getOrderStats);
+router.get("/my-orders", verifyToken, getMyOrders);
 router.get("/customer/:customerId", verifyToken, getOrdersByCustomer);
 router.get("/:id", verifyToken, getOrderById);
 

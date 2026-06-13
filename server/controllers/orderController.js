@@ -273,6 +273,37 @@ export const getOrdersByCustomer = async (req, res) => {
 };
 
 /**
+ * Get orders for authenticated customer
+ */
+export const getMyOrders = async (req, res) => {
+    try {
+        const customer = await getAuthenticatedCustomer(req.user);
+
+        if (!customer) {
+            return res.status(200).json({
+                success: true,
+                data: [],
+            });
+        }
+
+        const orders = await Order.find({ customerId: customer._id })
+            .populate("customerId", "name contactInfo role")
+            .sort({ createdAt: -1 });
+        const data = await attachOrderItemCounts(orders);
+
+        res.status(200).json({
+            success: true,
+            data,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Internal server error",
+        });
+    }
+};
+
+/**
  * Create new order
  */
 export const createOrder = async (req, res) => {

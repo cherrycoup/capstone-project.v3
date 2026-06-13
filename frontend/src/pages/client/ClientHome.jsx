@@ -27,7 +27,7 @@ import { appointmentsAPI, membershipAPI, ordersAPI, packagesAPI, productsAPI } f
 import { isMembershipActive } from "../../utils/membership.js";
 
 export default function ClientHome({ onNavigateTab }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     orders: 0,
@@ -42,10 +42,12 @@ export default function ClientHome({ onNavigateTab }) {
 
 
   useEffect(() => {
+    if (loading) return;
+
     const fetchStats = async () => {
       try {
         const [ordersResponse, appointmentsResponse, membershipResponse, packagesResponse, productsResponse] = await Promise.all([
-          user?.customerId ? ordersAPI.getByCustomer(user.customerId) : Promise.resolve({ data: { data: [] } }),
+          ordersAPI.getMyOrders(),
           appointmentsAPI.getMyAppointments(),
           membershipAPI.getMyMembership().catch(() => ({ data: { data: { membership: null } } })),
           packagesAPI.getAll().catch(() => ({ data: { data: [] } })),

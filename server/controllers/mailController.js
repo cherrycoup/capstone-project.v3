@@ -175,9 +175,10 @@ export const requestPasswordReset = async (req, res) => {
                 expiresInMinutes: RESET_TTL_MINUTES,
             });
 
-            const appUrl = process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || "";
+            const requestOrigin = req.get("origin") || "";
+            const appUrl = process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || requestOrigin || `${req.protocol}://${req.get("host")}`;
             resetUrl = appUrl
-                ? `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(email)}`
+                ? `${appUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(email)}`
                 : "";
 
             emailSent = await sendPasswordResetEmail({

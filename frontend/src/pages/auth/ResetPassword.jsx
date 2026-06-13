@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { authAPI } from "../../utils/api.js";
-import { KeyRound, Eye, EyeOff } from "lucide-react";
+import { KeyRound, Eye, EyeOff, AlertCircle } from "lucide-react";
 
 export default function ResetPassword() {
     const [searchParams] = useSearchParams();
@@ -16,6 +16,16 @@ export default function ResetPassword() {
 
     const token = searchParams.get("token");
     const email = searchParams.get("email");
+
+    useEffect(() => {
+        if (!token || !email) {
+            console.warn("Reset password page loaded without token or email", {
+                hasToken: !!token,
+                hasEmail: !!email,
+                searchParams: Object.fromEntries(searchParams),
+            });
+        }
+    }, [token, email, searchParams]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -56,19 +66,38 @@ export default function ResetPassword() {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-4">
                 <div className="w-full max-w-md">
-                    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 text-center sm:p-8">
-                        <div className="mb-6">
-                            <p className="text-lg font-semibold text-gray-900">Invalid Reset Link</p>
-                            <p className="text-sm text-gray-600 mt-2">
-                                The password reset link is missing or invalid. Please request a new one.
-                            </p>
+                    <div className="bg-white rounded-2xl shadow-lg border border-red-200 p-8">
+                        <div className="flex items-center justify-center mb-4">
+                            <AlertCircle className="h-12 w-12 text-red-600" />
                         </div>
-                        <Link
-                            to="/forgot-password"
-                            className="inline-block py-2.5 px-6 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium hover:shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all"
-                        >
-                            Request Reset Link
-                        </Link>
+                        <div className="text-center mb-6">
+                            <h1 className="text-2xl font-bold text-gray-900 mb-3">Invalid Reset Link</h1>
+                            <p className="text-base text-gray-700 mb-2">
+                                The password reset link is missing required information.
+                            </p>
+                            <p className="text-sm text-gray-600">
+                                This typically happens when:
+                            </p>
+                            <ul className="text-sm text-gray-600 mt-2 space-y-1 text-left">
+                                <li>• The link in your email was incomplete or corrupted</li>
+                                <li>• The link has expired (valid for 30 minutes)</li>
+                                <li>• You manually edited the URL</li>
+                            </ul>
+                        </div>
+                        <div className="space-y-3">
+                            <Link
+                                to="/forgot-password"
+                                className="block text-center py-3 px-6 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium hover:shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all"
+                            >
+                                Request a New Reset Link
+                            </Link>
+                            <Link
+                                to="/login"
+                                className="block text-center py-3 px-6 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-all"
+                            >
+                                Back to Sign In
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>

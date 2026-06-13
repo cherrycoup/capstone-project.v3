@@ -189,6 +189,7 @@ export const ordersAPI = {
     getAll: () => cachedGet("/orders"),
     getById: (id) => api.get(`/orders/${id}`),
     getByCustomer: (customerId) => api.get(`/orders/customer/${customerId}`),
+    getMyOrders: () => api.get(`/orders/my-orders`),
     create: (orderData) => api.post("/orders", orderData).finally(clearApiCache),
     updateStatus: (id, status) => api.put(`/orders/${id}/status`, { status }).finally(clearApiCache),
     cancel: (id) => api.put(`/orders/${id}/cancel`, {}).finally(clearApiCache),

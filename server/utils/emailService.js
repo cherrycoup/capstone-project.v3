@@ -88,18 +88,26 @@ export const sendOtpVerificationEmail = ({ to, name = "Customer", otp, expiresIn
 
 export const sendPasswordResetEmail = ({ to, name = "Customer", resetToken, resetUrl, expiresInMinutes = 30 }) => {
     const subject = `${appName} password reset`;
+    const resetText = resetUrl
+        ? `Reset link: ${resetUrl}`
+        : resetToken
+            ? `Reset code: ${resetToken}`
+            : "No reset link or code is available. Please contact support.";
+
     const text = [
         `Hello ${name},`,
         "",
         "We received a request to reset your password.",
-        resetUrl ? `Reset link: ${resetUrl}` : `Reset code: ${resetToken}`,
+        resetText,
         `This reset request expires in ${expiresInMinutes} minutes.`,
         "",
         "If you did not request this, you can ignore this email.",
     ].join("\n");
     const actionHtml = resetUrl
         ? `<p><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 18px;font-weight:700;">Reset password</a></p>`
-        : `<div style="margin:22px 0;padding:18px;background:#f9fafb;border:1px solid #e5e7eb;text-align:center;font-size:24px;font-weight:700;letter-spacing:4px;color:#111827;">${escapeHtml(resetToken)}</div>`;
+        : resetToken
+            ? `<div style="margin:22px 0;padding:18px;background:#f9fafb;border:1px solid #e5e7eb;text-align:center;font-size:24px;font-weight:700;letter-spacing:4px;color:#111827;">${escapeHtml(resetToken)}</div>`
+            : `<p style="color:#111827;">No reset link or code is available. Please contact support.</p>`;
     const html = buildTemplate({
         title: "Reset your password",
         preview: "Password reset request",
@@ -112,7 +120,12 @@ export const sendPasswordResetEmail = ({ to, name = "Customer", resetToken, rese
         `,
     });
 
-    return sendNotification({ to, subject, text, html });
+    return sendNotification({
+        to,
+        subject,
+        text,
+        html: html || `<pre style="white-space:pre-wrap;">${escapeHtml(text)}</pre>`,
+    });
 };
 
 export const sendMembershipApprovalEmail = ({ to, name = "Customer", tier, expiresAt }) => {
