@@ -13,7 +13,6 @@ import {
   Settings,
   ShoppingBag,
   User,
-  Zap,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -309,61 +308,62 @@ export default function ClientDashboard() {
         })}
       </nav>
 
-      <div className="p-4 border-t border-slate-700 space-y-3">
-        <button
-          type="button"
-          onClick={() => setAccountMenuOpen((open) => !open)}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-200"
-        >
-          <User className="h-5 w-5 flex-shrink-0" />
-          <span className="text-base font-medium flex-1 text-left">Account</span>
-          <ChevronDown
-            className={`h-4 w-4 transition-transform flex-shrink-0 ${
-              accountMenuOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+        <div className="p-4 border-t border-slate-700 space-y-3">
+          <button
+            type="button"
+            onClick={() => setAccountMenuOpen((open) => !open)}
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-200"
+          >
+            <User className="h-5 w-5 flex-shrink-0" />
+            <span className="text-base font-medium flex-1 text-left">Account</span>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform flex-shrink-0 ${
+                accountMenuOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
 
-        {accountMenuOpen && (
-          <div className="flex flex-col gap-3 overflow-hidden rounded-lg border border-slate-600 bg-slate-700/50 p-4">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 overflow-hidden flex items-center justify-center flex-shrink-0">
-                {user?.profileImageUrl ? (
-                  <img src={user.profileImageUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="font-semibold text-white">{user?.name?.[0]?.toUpperCase() || "C"}</span>
-                )}
+          {accountMenuOpen && (
+            <div className="flex flex-col gap-3 overflow-hidden rounded-lg border border-slate-600 bg-slate-700/50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {user?.profileImageUrl ? (
+                    <img src={user.profileImageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="font-semibold text-white">{user?.name?.[0]?.toUpperCase() || "C"}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-slate-400">Logged in as</p>
+                  <p className="text-base font-semibold text-white truncate">{user?.name || "Customer"}</p>
+                  <p className="text-sm text-slate-400 truncate">{user?.email || "customer@example.com"}</p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs text-slate-400">Logged in as</p>
-                <p className="text-base font-semibold text-white truncate">{user?.name || "Customer"}</p>
-                <p className="text-sm text-slate-400 truncate">{user?.email || "customer@example.com"}</p>
-              </div>
+              <div className="h-px bg-slate-600" />
+              <button
+                type="button"
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  setActiveTab("settings");
+                }}
+                className="w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-slate-300 transition-all duration-200 hover:bg-slate-600"
+              >
+                <Settings className="h-5 w-5" />
+                Settings
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-red-300 transition-all duration-200 hover:bg-red-600/20"
+              >
+                <LogOut className="h-5 w-5" />
+                Logout
+              </button>
             </div>
-            <div className="h-px bg-slate-600" />
-            <button
-              type="button"
-              onClick={() => {
-                setAccountMenuOpen(false);
-                setActiveTab("settings");
-              }}
-              className="w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-slate-300 transition-all duration-200 hover:bg-slate-600"
-            >
-              <Settings className="h-5 w-5" />
-              Settings
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-red-300 transition-all duration-200 hover:bg-red-600/20"
-            >
-              <LogOut className="h-5 w-5" />
-              Logout
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    
+    </div>
   );
 
   return (

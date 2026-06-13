@@ -89,24 +89,6 @@ export default function ClientTracking() {
     fetchUserData();
   }, [fetchUserData]);
 
-<<<<<<< HEAD
-  const buildOrderDateVariants = (dateString) => {
-    const date = new Date(dateString);
-    if (Number.isNaN(date.getTime())) return [];
-
-    const year = date.getFullYear().toString();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-
-    return [
-      `${year}${month}${day}`,
-      `${month}${day}${year}`,
-      `${day}${month}${year}`,
-    ];
-  };
-
-=======
->>>>>>> d13e14483c2ce9f213f10b2f7a73ea357e54a727
   const searchById = useCallback((id) => {
     const normalizedId = id.trim().toLowerCase();
     const cleanedDigits = normalizedId.replace(/[^0-9]/g, "");
@@ -138,22 +120,14 @@ export default function ClientTracking() {
     setSearchResults(
       matchedOrders.length > 0 ? { orders: matchedOrders } : appointment ? { appointment } : null
     );
-<<<<<<< HEAD
-  }, [myOrders, myAppointments]);
-=======
   }, [myAppointments, myOrders]);
->>>>>>> d13e14483c2ce9f213f10b2f7a73ea357e54a727
 
   useEffect(() => {
     if (!loading && orderQuery) {
       setTrackingId(orderQuery);
       searchById(orderQuery);
     }
-<<<<<<< HEAD
-  }, [loading, orderQuery, myOrders, myAppointments, searchById]);
-=======
   }, [loading, orderQuery, searchById]);
->>>>>>> d13e14483c2ce9f213f10b2f7a73ea357e54a727
 
   const handleSearch = (event) => {
     event.preventDefault();

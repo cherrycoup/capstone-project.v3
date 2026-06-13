@@ -23,6 +23,10 @@ import logger from "../utils/logger.js";
 const SALT_ROUNDS = 12;
 const OTP_TTL_MINUTES = Number(process.env.EMAIL_OTP_TTL_MINUTES || 10);
 const RESET_TTL_MINUTES = Number(process.env.PASSWORD_RESET_TTL_MINUTES || 30);
+const shouldExposePasswordResetToken = () =>
+    process.env.PASSWORD_RESET_DEBUG === "true" ||
+    process.env.EMAIL_DEBUG === "true" ||
+    process.env.NODE_ENV !== "production";
 
 const hashToken = (token) =>
     crypto.createHash("sha256").update(String(token)).digest("hex");
@@ -148,6 +152,9 @@ export const verifyOtp = async (req, res) => {
 export const requestPasswordReset = async (req, res) => {
     try {
         const email = normalizeEmail(req.body.email);
+        let emailSent = false;
+        let resetToken = "";
+        let resetUrl = "";
 
         if (!email || !isValidEmail(email)) {
             return res.status(400).json({
@@ -158,7 +165,7 @@ export const requestPasswordReset = async (req, res) => {
 
         const account = await findAccountByEmail(email);
 
-        const resetToken = crypto.randomBytes(32).toString("hex");
+        resetToken = crypto.randomBytes(32).toString("hex");
 
         if (account) {
             await createEmailToken({
@@ -169,11 +176,11 @@ export const requestPasswordReset = async (req, res) => {
             });
 
             const appUrl = process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || "";
-            const resetUrl = appUrl
+            resetUrl = appUrl
                 ? `${appUrl}/reset-password?token=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(email)}`
                 : "";
 
-            const emailResult = await sendPasswordResetEmail({
+            emailSent = await sendPasswordResetEmail({
                 to: email,
                 name: account.name,
                 resetToken,
@@ -181,23 +188,24 @@ export const requestPasswordReset = async (req, res) => {
                 expiresInMinutes: RESET_TTL_MINUTES,
             });
 
-            if (!emailResult) {
+            if (!emailSent) {
                 logger.warn("Mail.requestPasswordReset", `Password reset email failed for ${email}`);
-
-                const exposeError = process.env.EMAIL_DEBUG === "true" || process.env.NODE_ENV !== "production";
-                if (exposeError) {
-                    return res.status(500).json({
-                        success: false,
-                        message: "Password reset email could not be sent. Check backend logs for SMTP details.",
-                    });
-                }
             }
         }
 
-        return res.status(200).json({
+        const response = {
             success: true,
             message: "If the email is registered, a password reset email has been sent",
-        });
+            emailSent,
+        };
+
+        if (account && !emailSent && shouldExposePasswordResetToken()) {
+            response.message = "Password reset email could not be sent, but a development reset link was generated.";
+            response.resetToken = resetToken;
+            response.resetUrl = resetUrl;
+        }
+
+        return res.status(200).json(response);
     } catch (error) {
         handleControllerError(res, error, "Mail.requestPasswordReset", 500, "Failed to send password reset email");
     }

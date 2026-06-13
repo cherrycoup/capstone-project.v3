@@ -43,13 +43,7 @@ export default function MembershipBanner() {
                 const customerData = response.data.data;
                 setMembership(customerData.customer?.membership);
             } catch (err) {
-<<<<<<< HEAD
                 void err;
-=======
-                if (err.response?.status !== 401) {
-                    console.error('Failed to load membership information:', err);
-                }
->>>>>>> d13e14483c2ce9f213f10b2f7a73ea357e54a727
             } finally {
                 setLoading(false);
             }
