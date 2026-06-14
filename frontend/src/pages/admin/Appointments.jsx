@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { AlertCircle, Calendar as CalendarIcon, CheckCircle, Clock, Mail, MapPin, Phone, User, Wrench } from "lucide-react";
 import { Badge } from "../../components/ui/badge.jsx";
@@ -34,6 +34,7 @@ export default function Appointments() {
   const [blockedDates, setBlockedDates] = useState([]);
   const [fullyBookedDates, setFullyBookedDates] = useState([]);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [isDateFilterActive, setIsDateFilterActive] = useState(false);
 
   async function fetchAppointments() {
     try {
@@ -46,24 +47,38 @@ export default function Appointments() {
     }
   }
 
+  async function fetchCalendarDates() {
+    try {
+      const [blockedRes, bookedRes] = await Promise.all([
+        appointmentsAPI.getBlockedDates(),
+        appointmentsAPI.getFullyBookedDates(),
+      ]);
+      setBlockedDates(blockedRes.data.data || []);
+      setFullyBookedDates(bookedRes.data.data || []);
+    } catch {
+      // Silently handle date loading errors
+    }
+  }
+
   useEffect(() => {
     fetchAppointments();
-    // fetch blocked dates and fully booked dates for calendar
-    (async () => {
-      try {
-        const [blockedRes, bookedRes] = await Promise.all([
-          appointmentsAPI.getBlockedDates(),
-          appointmentsAPI.getFullyBookedDates()
-        ]);
-        setBlockedDates(blockedRes.data.data || []);
-        setFullyBookedDates(bookedRes.data.data || []);
-      } catch {
-        // Silently handle date loading errors
-      }
-    })();
+    fetchCalendarDates();
+  }, []);
+
+  const handleDateSelect = useCallback((date) => {
+    setSelectedDate(date);
+    setIsDateFilterActive(true);
+    setViewMode(null);
+  }, []);
+
+  const clearDateFilter = useCallback(() => {
+    setIsDateFilterActive(false);
+    setViewMode("all");
   }, []);
 
   const handleUpdateStatus = async () => {
+    if (updatingStatus) return; // prevent duplicate clicks
+
     if (!selectedAppointment?._id) {
       toast.error("No appointment selected");
       return;
@@ -79,13 +94,21 @@ export default function Appointments() {
 
     setUpdatingStatus(true);
     try {
-      await appointmentsAPI.updateStatus(selectedAppointment._id, trimmedStatus);
-      toast.success("Appointment status updated successfully");
+      // Optimistic UI update: apply immediately so user sees change
+      const prevStatus = selectedAppointment.status;
+      setAppointmentsList((prev) => prev.map((a) => (a._id === selectedAppointment._id ? { ...a, status: trimmedStatus } : a)));
       setDialogOpen(false);
       setSelectedAppointment(null);
       setNewStatus("");
-      fetchAppointments();
+      toast.success("Appointment status updated successfully");
+
+      // Fire API call without blocking toast; refresh in background
+      await appointmentsAPI.updateStatus(selectedAppointment._id, trimmedStatus);
+      // Refresh calendar and appointment state after status update
+      await Promise.all([fetchAppointments(), fetchCalendarDates()]);
     } catch (error) {
+      // Revert optimistic change on error
+      setAppointmentsList((prev) => prev.map((a) => (a._id === selectedAppointment._id ? { ...a, status: prevStatus } : a)));
       const message = error.response?.data?.message || "Failed to update appointment status";
       console.error("Appointment status update error:", message);
       toast.error(message);
@@ -114,8 +137,11 @@ export default function Appointments() {
 
   // Get all appointment dates for calendar display
   const appointmentDates = appointmentsList
-    .filter(apt => apt.date && (apt.status === "Scheduled" || apt.status === "Confirmed"))
-    .map(apt => apt.date.split("T")[0]);
+    .filter((apt) => apt.date && apt.status !== "Cancelled")
+    .map((apt) => {
+      const dateValue = apt.date instanceof Date ? apt.date : new Date(apt.date);
+      return dateValue.toISOString().slice(0, 10);
+    });
 
   // Memoize modifier functions to prevent unnecessary re-renders and event delays
   const blockedModifier = useCallback((date) => {
@@ -178,22 +204,37 @@ export default function Appointments() {
       appointment.status === "Scheduled" || appointment.status === "Confirmed"
   );
 
-  const filteredAppointments = sortedAppointments.filter((appointment) => {
-    if (viewMode === "upcoming") {
-      return upcomingAppointments.some((item) => item._id === appointment._id);
-    }
-    if (viewMode === "today") {
-      return todayAppointments.some((item) => item._id === appointment._id);
-    }
-    return true;
-  });
+  const filteredAppointments = useMemo(() => {
+    return sortedAppointments.filter((appointment) => {
+      if (isDateFilterActive && selectedDate) {
+        const appointmentDate = appointment.date ? new Date(appointment.date) : null;
+        return (
+          appointmentDate &&
+          appointmentDate.getFullYear() === selectedDate.getFullYear() &&
+          appointmentDate.getMonth() === selectedDate.getMonth() &&
+          appointmentDate.getDate() === selectedDate.getDate()
+        );
+      }
+      if (viewMode === "upcoming") {
+        return upcomingAppointments.some((item) => item._id === appointment._id);
+      }
+      if (viewMode === "today") {
+        return todayAppointments.some((item) => item._id === appointment._id);
+      }
+      return true;
+    });
+  }, [isDateFilterActive, selectedDate, viewMode, sortedAppointments, upcomingAppointments, todayAppointments]);
 
-  const listHeading =
-    viewMode === "today"
+  const listHeading = useMemo(
+    () => isDateFilterActive && selectedDate
+      ? `Appointments for ${formatDate(selectedDate)}`
+      : viewMode === "today"
       ? "Today's Appointments"
       : viewMode === "upcoming"
       ? "Upcoming Appointments"
-      : "All Appointments";
+      : "All Appointments",
+    [isDateFilterActive, selectedDate, viewMode]
+  );
 
   if (loading) {
     return <div className="p-6">Loading appointments...</div>;
@@ -248,15 +289,27 @@ export default function Appointments() {
             key={option.key}
             type="button"
             className={`rounded-full px-3 py-1.5 text-xs transition ${
-              viewMode === option.key
+              !isDateFilterActive && viewMode === option.key
                 ? "bg-slate-950 text-white"
                 : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
-            onClick={() => setViewMode(option.key)}
+            onClick={() => {
+              setViewMode(option.key);
+              setIsDateFilterActive(false);
+            }}
           >
             {option.label}
           </button>
         ))}
+        {isDateFilterActive && (
+          <button
+            type="button"
+            className="ml-auto rounded-full px-3 py-1.5 text-xs border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition"
+            onClick={clearDateFilter}
+          >
+            Clear date ✕
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
@@ -271,7 +324,7 @@ export default function Appointments() {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
+                  onSelect={handleDateSelect}
                   modifiers={{
                     blocked: blockedModifier,
                     fullyBooked: fullyBookedModifier,

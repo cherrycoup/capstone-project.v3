@@ -157,12 +157,12 @@ export default function StaffManagement() {
 
     try {
       if (editingId) {
+        // Admin edits: don't include profileImageUrl - staff can update photos in their Settings
         await staffAPI.update(editingId, {
           name: formData.name,
           role: formData.role,
           phone: formData.phone,
           department: formData.department,
-          profileImageUrl: formData.profileImageUrl,
           isActive: formData.isActive,
         });
 
@@ -172,6 +172,7 @@ export default function StaffManagement() {
 
         toast.success(formData.password ? "Staff member updated and password reset" : "Staff member updated");
       } else {
+        // Create new staff: include profileImageUrl if provided
         await staffAPI.create({
           name: formData.name,
           email: formData.email,
@@ -453,13 +454,19 @@ export default function StaffManagement() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="staffProfileImage">Profile Image URL <span className="text-sm text-slate-400">(optional)</span></Label>
+              <Label htmlFor="staffProfileImage">
+                Profile Image URL 
+                <span className="text-sm text-slate-400">
+                  {editingId ? " (update in Settings)" : " (optional)"}
+                </span>
+              </Label>
               <Input
                 id="staffProfileImage"
                 type="url"
                 value={formData.profileImageUrl}
                 onChange={(event) => setFormData({ ...formData, profileImageUrl: event.target.value })}
-                placeholder="Optional - add later in profile settings"
+                disabled={!!editingId}
+                placeholder={editingId ? "Staff members update photos in Settings" : "https://example.com/image.jpg"}
               />
             </div>
 

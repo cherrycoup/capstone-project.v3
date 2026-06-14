@@ -8,12 +8,14 @@ export default function SearchBar({
   onChange,
   onClear,
   children,
-  gridCols = "md:grid-cols-[minmax(0,1fr)_200px]"
+  gridCols = null
 }) {
+  // Use single column if no children, otherwise use 2-column layout
+  const resolvedGridCols = gridCols || (children ? "md:grid-cols-[minmax(0,1fr)_200px]" : "w-full");
   return (
     <Card>
       <CardContent className="flex min-h-20 items-center px-4 py-8">
-        <div className={`mx-auto grid w-full max-w-6xl items-center gap-3 pt-5 ${gridCols}`}>
+        <div className={`mx-auto w-full max-w-6xl grid items-center gap-3 pt-5 ${resolvedGridCols}`}>
           <div className="relative flex h-10 items-center w-full">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input

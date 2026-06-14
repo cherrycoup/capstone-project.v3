@@ -239,10 +239,10 @@ export default function ClientTracking() {
                   <h4 className="font-semibold">Appointment {searchResults.appointment.appointmentId}</h4>
                   <Badge
                     className={
-                      appointmentStatusColors[searchResults.appointment.status] || "bg-gray-100 text-gray-800"
+                      appointmentStatusColors[searchResults.appointment.status || "Scheduled"] || "bg-gray-100 text-gray-800"
                     }
                   >
-                    {searchResults.appointment.status}
+                    {searchResults.appointment.status || "Scheduled"}
                   </Badge>
                 </div>
                 <p className="text-sm">
@@ -335,10 +335,10 @@ export default function ClientTracking() {
                   </div>
                   <Badge
                     className={
-                      appointmentStatusColors[appointment.status] || "bg-gray-100 text-gray-800"
+                      appointmentStatusColors[appointment.status || "Scheduled"] || "bg-gray-100 text-gray-800"
                     }
                   >
-                    {appointment.status}
+                    {appointment.status || "Scheduled"}
                   </Badge>
                 </div>
               </CardContent>

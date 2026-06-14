@@ -82,10 +82,10 @@ export default function Settings() {
   const accountLabel = isCustomer
     ? `${displayRole} customer account`
     : `${displayRole} account`;
-  const accountBadgeClassName = isCustomer
+  const accountBadgeClassName = isCustomer || isStaff
     ? "rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-sm text-emerald-700 flex gap-2 shadow-sm"
     : "rounded-xl bg-white/80 border border-slate-200 px-3 py-2 text-sm text-slate-700 flex gap-2 shadow-sm";
-  const accountBadgeIconClassName = isCustomer
+  const accountBadgeIconClassName = isCustomer || isStaff
     ? "h-4 w-4 mt-0.5 text-emerald-500"
     : "h-4 w-4 mt-0.5 text-slate-500";
   const saveProfileImage = async (imageUrl) => {

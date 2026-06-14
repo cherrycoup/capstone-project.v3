@@ -31,9 +31,19 @@ const ALL_SLOTS = [
 
 const VALID_STATUSES = ["Scheduled", "Confirmed", "Completed", "Cancelled"];
 
+const parseDateOnly = (value) => {
+    if (!value) return null;
+    const parts = String(value).split("-").map((part) => Number(part));
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) {
+        return null;
+    }
+    const [year, month, day] = parts;
+    return new Date(year, month - 1, day);
+};
+
 const getDayRange = (value) => {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
+    const date = parseDateOnly(value);
+    if (!date || Number.isNaN(date.getTime())) {
         return null;
     }
 
@@ -528,7 +538,9 @@ export const getAvailableSlots = async (req, res) => {
             status: { $ne: "Cancelled" },
         });
 
-        const bookedSlots = bookedAppointments.map((appointment) => appointment.timeSlot);
+        const bookedSlots = bookedAppointments
+            .map((appointment) => appointment.timeSlot || appointment.time)
+            .filter(Boolean);
         const availableSlots = ALL_SLOTS.filter((slot) => !bookedSlots.includes(slot));
 
         res.status(200).json({

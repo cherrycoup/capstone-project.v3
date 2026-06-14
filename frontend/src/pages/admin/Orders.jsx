@@ -46,6 +46,7 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
   const [newStatus, setNewStatus] = useState("");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tableScrollWidth, setTableScrollWidth] = useState(0);
   const topScrollRef = useRef(null);
@@ -117,6 +118,7 @@ export default function Orders() {
   };
 
   const handleStatusUpdate = async () => {
+    if (updatingStatus) return; // prevent double clicks
     if (!selectedOrder?._id) {
       toast.error("Order not selected");
       return;
@@ -130,17 +132,28 @@ export default function Orders() {
       return;
     }
 
+    // Optimistic UI update: apply status locally immediately for snappy UX
+    const prevStatus = selectedOrder.status;
+    setOrders((prev) => prev.map((o) => (o._id === selectedOrder._id ? { ...o, status: trimmedStatus } : o)));
+    setSelectedOrder(null);
+    setOrderDetails(null);
+    setNewStatus("");
+    toast.success("Order status updated successfully");
+
+    setUpdatingStatus(true);
     try {
+      // Fire API call without blocking UI; refresh in background
       await ordersAPI.updateStatus(selectedOrder._id, trimmedStatus);
-      toast.success("Order status updated successfully");
-      setSelectedOrder(null);
-      setOrderDetails(null);
-      setNewStatus("");
+      // Refresh in background without awaiting
       fetchOrders();
     } catch (error) {
+      // Revert optimistic change on error
+      setOrders((prev) => prev.map((o) => (o._id === selectedOrder._id ? { ...o, status: prevStatus } : o)));
       const message = error.response?.data?.message || "Failed to update order status";
       console.error("Order status update error:", message);
       toast.error(message);
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -467,7 +480,9 @@ export default function Orders() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={handleStatusUpdate} className="w-full">Update Status</Button>
+                <Button onClick={handleStatusUpdate} className="w-full" disabled={updatingStatus}>
+                  {updatingStatus ? 'Updating...' : 'Update Status'}
+                </Button>
               </div>
             </div>
           )}

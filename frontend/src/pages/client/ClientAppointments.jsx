@@ -55,11 +55,22 @@ export default function ClientAppointments() {
   const [notes, setNotes] = useState("");
   const [availableSlots, setAvailableSlots] = useState(TIME_SLOTS);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [unavailableDates, setUnavailableDates] = useState([]);
 
+  const formatDateKey = (value) => {
+    if (!value) return "";
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const handleDateSelect = (nextDate) => {
+    if (!nextDate || nextDate?.getTime() !== date?.getTime()) {
+      setTimeSlot("");
+    }
     setDate(nextDate);
-    setTimeSlot("");
     if (!nextDate) {
       setAvailableSlots(TIME_SLOTS);
     }
@@ -73,7 +84,7 @@ export default function ClientAppointments() {
     const fetchSlots = async () => {
       setLoadingSlots(true);
       try {
-        const dateKey = date.toISOString().slice(0, 10);
+        const dateKey = formatDateKey(date);
         const response = await appointmentsAPI.getAvailableSlots(dateKey);
         setAvailableSlots(response.data.data || []);
       } catch {
@@ -117,44 +128,47 @@ export default function ClientAppointments() {
     return unavailableDates.includes(checkDateKey);
   };
 
-const handleSubmit = async (event) => {
-  event.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-  if (!date || !timeSlot || !service || !name || !email || !phone) {
-    toast.error("Please fill in all required fields");
-    return;
-  }
+    if (!date || !timeSlot || !service || !name || !email || !phone) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
 
-  try {
-    const appointmentData = {
-      customerId: user?.id, // Link appointment to current user
-      date,
-      timeSlot,
-      service,
-      notes,
-      contactInfo: {
-        name,
-        email,
-        phone,
-        address: user?.address || ""
-      }
-    };
+    setIsSubmitting(true);
+    try {
+      const appointmentData = {
+        customerId: user?.id, // Link appointment to current user
+        date: formatDateKey(date),
+        timeSlot,
+        service,
+        notes,
+        contactInfo: {
+          name,
+          email,
+          phone,
+          address: user?.address || ""
+        }
+      };
 
-    await appointmentsAPI.create(appointmentData);
+      await appointmentsAPI.create(appointmentData);
 
-    toast.success("Appointment booked successfully!");
+      toast.success("Appointment booked successfully!");
 
-    // reset form
-    handleDateSelect(undefined);
-    setTimeSlot("");
-    setService("");
-    setPhone(user?.phone || "");
-    setNotes("");
+      // reset form
+      handleDateSelect(undefined);
+      setTimeSlot("");
+      setService("");
+      setPhone(user?.phone || "");
+      setNotes("");
 
-  } catch (error) {
-    toast.error(error.response?.data?.message || "Failed to book appointment");
-  }
-};
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to book appointment");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return (
     <div className="space-y-6">
       <div>
@@ -213,7 +227,7 @@ const handleSubmit = async (event) => {
                     <SelectTrigger id="timeSlot">
                       <SelectValue placeholder={loadingSlots ? "Loading slots..." : "Select a time slot"} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="min-w-[9rem] max-w-[14rem] w-auto">
                       {TIME_SLOTS.map((slot) => {
                         const slotAvailable = availableSlots.includes(slot);
                         return (
@@ -240,7 +254,7 @@ const handleSubmit = async (event) => {
                     <SelectTrigger id="service">
                       <SelectValue placeholder="Select a service" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="min-w-[9rem] max-w-[14rem] w-auto">
                       {SERVICES.map((item) => (
                         <SelectItem key={item} value={item}>
                           {item}
@@ -308,8 +322,8 @@ const handleSubmit = async (event) => {
               </CardContent>
             </Card>
 
-            <Button type="submit" size="lg" className="w-full">
-              Confirm Appointment
+            <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Booking..." : "Confirm Appointment"}
             </Button>
           </form>
         </div>

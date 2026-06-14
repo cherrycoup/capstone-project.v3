@@ -11,6 +11,7 @@ import { Textarea } from "../../components/ui/textarea.jsx";
 import PaymentDetailsModal from "../../components/ui/PaymentDetailsModal.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { membershipAPI, packagesAPI } from "../../utils/api.js";
+import { validateMembershipApplicationPageData } from "../../utils/membership";
 import logoSrc from "../../assets/logo.webp";
 
 const paymentOptions = [
@@ -40,6 +41,7 @@ export default function MembershipApplicationForm() {
   const [additionalInfo, setAdditionalInfo] = useState("");
   const [paymentMethod, setPaymentMethod] = useState(paymentOptions[0].value);
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [formErrors, setFormErrors] = useState({});
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   useEffect(() => {
@@ -80,33 +82,55 @@ export default function MembershipApplicationForm() {
 
   const handlePaymentMethodChange = (value) => {
     setPaymentMethod(value);
+    setFormErrors((prev) => ({
+      ...prev,
+      paymentMethod: undefined,
+      referenceNumber: undefined,
+      general: undefined
+    }));
   };
 
   const openPaymentModal = () => setIsPaymentModalOpen(true);
   const closePaymentModal = () => setIsPaymentModalOpen(false);
   const handlePaymentModalConfirm = () => {
+    setFormErrors((prev) => ({ ...prev, referenceNumber: undefined, general: undefined }));
     closePaymentModal();
   };
 
+  const handleReferenceNumberChange = (value) => {
+    setReferenceNumber(value);
+    setFormErrors((prev) => ({ ...prev, referenceNumber: undefined, general: undefined }));
+  };
+
   const validateForm = () => {
-    if (!fullName || !address || !phoneNumber || !email) {
-      toast.error("Please fill in all required personal information");
+    const validation = validateMembershipApplicationPageData({
+      fullName,
+      email,
+      phone: phoneNumber,
+      address,
+      paymentMethod,
+      referenceNumber,
+      packageDealId: selectedPackage?._id
+    });
+
+    setFormErrors(validation.errors);
+
+    if (!validation.isValid) {
+      if (validation.errors.general) {
+        toast.error(validation.errors.general);
+      } else if (validation.errors.paymentMethod) {
+        toast.error(validation.errors.paymentMethod);
+      } else if (validation.errors.referenceNumber) {
+        toast.error(validation.errors.referenceNumber);
+      } else if (validation.errors.packageDealId) {
+        toast.error(validation.errors.packageDealId);
+      } else {
+        const firstError = Object.values(validation.errors)[0];
+        toast.error(firstError || "Please fill in all required personal information.");
+      }
       return false;
     }
-    if (!selectedPackage) {
-      toast.error("Please select a membership package");
-      return false;
-    }
-    if (!paymentMethod) {
-      toast.error("Please select a payment method");
-      return false;
-    }
-    if ((paymentMethod === "gcash" || paymentMethod === "bank_transfer") && !referenceNumber) {
-      toast.error(
-        `Please enter the payment reference number for ${paymentMethod === "gcash" ? "GCash" : "Bank Transfer"}`
-      );
-      return false;
-    }
+
     return true;
   };
 
@@ -247,10 +271,16 @@ export default function MembershipApplicationForm() {
                   id="fullName"
                   placeholder="Dimonara"
                   value={fullName}
-                  onChange={(event) => setFullName(event.target.value)}
+                  onChange={(event) => {
+                    setFullName(event.target.value);
+                    setFormErrors((prev) => ({ ...prev, fullName: undefined, general: undefined }));
+                  }}
                   required
                   className="mt-2"
                 />
+                {formErrors.fullName && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.fullName}</p>
+                )}
               </div>
 
               <div>
@@ -260,10 +290,16 @@ export default function MembershipApplicationForm() {
                   type="email"
                   placeholder="example@gmail.com"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setFormErrors((prev) => ({ ...prev, email: undefined, general: undefined }));
+                  }}
                   required
                   className="mt-2"
                 />
+                {formErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
+                )}
               </div>
 
               <div>
@@ -273,10 +309,16 @@ export default function MembershipApplicationForm() {
                   type="tel"
                   placeholder="0983746253"
                   value={phoneNumber}
-                  onChange={(event) => setPhoneNumber(event.target.value)}
+                  onChange={(event) => {
+                    setPhoneNumber(event.target.value);
+                    setFormErrors((prev) => ({ ...prev, phone: undefined, general: undefined }));
+                  }}
                   required
                   className="mt-2"
                 />
+                {formErrors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.phone}</p>
+                )}
               </div>
 
               <div>
@@ -285,11 +327,17 @@ export default function MembershipApplicationForm() {
                   id="address"
                   placeholder="cainta rizal"
                   value={address}
-                  onChange={(event) => setAddress(event.target.value)}
+                  onChange={(event) => {
+                    setAddress(event.target.value);
+                    setFormErrors((prev) => ({ ...prev, address: undefined, general: undefined }));
+                  }}
                   required
                   rows={3}
                   className="mt-2"
                 />
+                {formErrors.address && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.address}</p>
+                )}
               </div>
             </div>
           </div>
@@ -314,6 +362,7 @@ export default function MembershipApplicationForm() {
                     onChange={(event) => {
                       const pkg = packageDeals.find(p => p._id === event.target.value);
                       setSelectedPackage(pkg);
+                      setFormErrors((prev) => ({ ...prev, packageDealId: undefined }));
                     }}
                     className="w-full mt-2 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   >
@@ -323,6 +372,9 @@ export default function MembershipApplicationForm() {
                       </option>
                     ))}
                   </select>
+                  {formErrors.packageDealId && (
+                    <p className="text-red-500 text-sm mt-1">{formErrors.packageDealId}</p>
+                  )}
                 </div>
 
                 {/* Selected Package Details Card */}
@@ -422,35 +474,39 @@ export default function MembershipApplicationForm() {
                     </option>
                   ))}
                 </select>
+                {formErrors.paymentMethod && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.paymentMethod}</p>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="mt-4 w-full justify-between"
+                  onClick={openPaymentModal}
+                >
+                  View {paymentMethod === "gcash" ? "GCash" : "Bank Transfer"} payment details
+                </Button>
               </div>
 
-              {(paymentMethod === "gcash" || paymentMethod === "bank_transfer") && (
-                <div className="space-y-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-between"
-                    onClick={openPaymentModal}
-                  >
-                    View {paymentMethod === "gcash" ? "GCash" : "Bank Transfer"} payment details
-                  </Button>
-                  <p className="text-sm text-gray-600">
-                    After sending payment, add the reference number in the modal and submit your application.
-                  </p>
-                  {referenceNumber && (
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
-                      <span className="font-medium">Reference Number:</span> {referenceNumber}
-                    </div>
-                  )}
-                </div>
-              )}
+              <div>
+                <p className="text-sm text-gray-600">
+                  After sending payment, add the reference number in the modal and submit your application.
+                </p>
+                {referenceNumber && (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+                    <span className="font-medium">Reference Number:</span> {referenceNumber}
+                  </div>
+                )}
+                {formErrors.referenceNumber && (
+                  <p className="text-red-500 text-sm mt-2">{formErrors.referenceNumber}</p>
+                )}
+              </div>
 
               <PaymentDetailsModal
                 open={isPaymentModalOpen}
                 onClose={closePaymentModal}
                 paymentMethod={paymentMethod}
                 referenceNumber={referenceNumber}
-                onReferenceNumberChange={setReferenceNumber}
+                onReferenceNumberChange={handleReferenceNumberChange}
                 onConfirm={handlePaymentModalConfirm}
               />
 

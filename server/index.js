@@ -118,6 +118,21 @@ app.get('/api/health', (req, res) => {
     res.status(200).json({ success: true, message: "Server is running" })
 })
 
+// Serve frontend static files in production when the frontend build is available
+if (process.env.NODE_ENV === "production") {
+    const staticDir = path.join(projectRoot, "frontend", "dist")
+    try {
+        app.use(express.static(staticDir))
+        // Serve index.html for any non-API route so client-side routing works
+        app.get('*', (req, res, next) => {
+            if (req.path.startsWith('/api/')) return next()
+            res.sendFile(path.join(staticDir, 'index.html'))
+        })
+    } catch (err) {
+        logger.warn('Frontend static assets not found or failed to mount', err.message)
+    }
+}
+
 // 404 route
 app.use((req, res) => {
     res.status(404).json({ success: false, message: "Route not found" })

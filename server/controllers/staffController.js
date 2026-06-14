@@ -343,6 +343,89 @@ export const updateOwnPassword = async (req, res) => {
 };
 
 /**
+ * Update staff member's own profile (name, phone, department)
+ */
+export const updateOwnProfile = async (req, res) => {
+    try {
+        const name = cleanString(req.body.name, 120);
+        const phone = cleanString(req.body.phone, 30);
+        const department = cleanString(req.body.department, 120);
+
+        const staffMember = await Staff.findByIdAndUpdate(
+            req.user?.id,
+            {
+                name,
+                phone,
+                department,
+                updatedAt: new Date()
+            },
+            { new: true }
+        ).select("-password");
+
+        if (!staffMember) {
+            return res.status(404).json({
+                success: false,
+                message: "Staff not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: staffMember
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
+ * Update staff member photo (self-service for logged-in staff)
+ */
+export const updateStaffPhoto = async (req, res) => {
+    try {
+        const profileImageUrl = cleanProfileImage(req.body.profileImageUrl);
+
+        if (!profileImageUrl) {
+            return res.status(400).json({
+                success: false,
+                message: "Profile image URL is required"
+            });
+        }
+
+        const staffMember = await Staff.findByIdAndUpdate(
+            req.user?.id,
+            {
+                profileImageUrl,
+                updatedAt: new Date()
+            },
+            { new: true }
+        ).select("-password");
+
+        if (!staffMember) {
+            return res.status(404).json({
+                success: false,
+                message: "Staff not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Profile photo updated successfully",
+            data: staffMember
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+/**
  * Delete staff member (Admin only)
  */
 export const deleteStaff = async (req, res) => {
