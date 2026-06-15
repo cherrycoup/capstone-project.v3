@@ -63,6 +63,11 @@ export const createRateLimiter = ({
     let nextCleanupAt = Date.now() + windowMs;
 
     return async (req, res, next) => {
+        // Skip rate limiting in development for easier testing
+        if (process.env.NODE_ENV === 'development') {
+            return next();
+        }
+
         const now = Date.now();
         const key = req.ip || req.socket?.remoteAddress || "unknown";
 

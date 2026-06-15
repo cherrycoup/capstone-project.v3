@@ -23,6 +23,7 @@ import promotionsRoutes from "./routes/promotions.js"
 import membershipsRoutes from "./routes/memberships.js"
 import mailRoutes from "./routes/mail.js"
 import faqRoutes from "./routes/faqs.js"
+import devAuthRoutes from "./routes/devAuth.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -102,6 +103,11 @@ app.use('/api/reports', reportsRoutes)
 app.use('/api/memberships', membershipsRoutes)
 app.use('/api/mail', mailRoutes)
 
+// Development-only dev auth routes (provides a safe local dev sign-in)
+if (isDevelopment) {
+    app.use('/api/auth/dev', devAuthRoutes)
+}
+
 // Health check route
 // Lightweight debug middleware for FAQ endpoints to help diagnose 403/CORS/auth issues
 app.use('/api/faqs', (req, res, next) => {
@@ -152,7 +158,8 @@ const port = process.env.PORT || 5000
 
 const startServer = async () => {
     await connectDb()
-    app.listen(port, () => {
+    // Bind to all interfaces so mobile devices on the local network can reach the server
+    app.listen(port, '0.0.0.0', () => {
         logger.startup(`Server running on http://localhost:${port}`)
     })
 }

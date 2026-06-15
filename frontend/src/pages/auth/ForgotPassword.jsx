@@ -21,9 +21,15 @@ export default function ForgotPassword() {
 
         setLoading(true);
         try {
-            await authAPI.requestPasswordReset(email);
-            setSubmitted(true);
+            const resp = await authAPI.requestPasswordReset(email);
+            console.debug("ForgotPassword response:", resp?.data);
+            if (resp?.data?.emailSent || resp?.data?.success) {
+                setSubmitted(true);
+            } else {
+                setError(resp?.data?.message || "Failed to send reset email");
+            }
         } catch (err) {
+            console.warn("ForgotPassword error:", err?.response?.data || err?.message || err);
             setError(err.response?.data?.message || "Failed to send reset email");
         } finally {
             setLoading(false);

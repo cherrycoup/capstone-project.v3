@@ -176,10 +176,29 @@ export const requestPasswordReset = async (req, res) => {
             });
 
             const requestOrigin = req.get("origin") || "";
-            const appUrl = process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || requestOrigin || `${req.protocol}://${req.get("host")}`;
+            const frontendFallback = process.env.NODE_ENV !== "production" ? "http://localhost:5173" : "";
+            let appUrl = process.env.PUBLIC_APP_URL || process.env.CLIENT_URL || requestOrigin || frontendFallback || `${req.protocol}://${req.get("host")}`;
+            
+            // DEBUG: Log what's being used
+            console.log("[MAIL_CONTROLLER_DEBUG]", {
+                PUBLIC_APP_URL: process.env.PUBLIC_APP_URL,
+                CLIENT_URL: process.env.CLIENT_URL,
+                requestOrigin,
+                frontendFallback,
+                selectedAppUrl: appUrl,
+                NODE_ENV: process.env.NODE_ENV
+            });
+            
+            // Remove hash if it somehow got included, and normalize
+            appUrl = appUrl.replace(/#.*$/, "").replace(/\/$/, "");
+            console.log("[MAIL_CONTROLLER_NORMALIZED_URL]", appUrl);
+            
+            // Always use hash format for client-side routing
             resetUrl = appUrl
-                ? `${appUrl.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(email)}`
+                ? `${appUrl}/#/reset-password?token=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(email)}`
                 : "";
+            
+            console.log("[MAIL_CONTROLLER_GENERATED_RESETURL]", resetUrl);
 
             emailSent = await sendPasswordResetEmail({
                 to: email,

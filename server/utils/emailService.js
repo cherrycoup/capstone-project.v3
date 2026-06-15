@@ -87,6 +87,27 @@ export const sendOtpVerificationEmail = ({ to, name = "Customer", otp, expiresIn
 };
 
 export const sendPasswordResetEmail = ({ to, name = "Customer", resetToken, resetUrl, expiresInMinutes = 30 }) => {
+    console.log("[EMAIL_SERVICE_START] Received resetUrl:", resetUrl);
+    console.log("[EMAIL_SERVICE_START] Has hash?", resetUrl?.includes("/#/"));
+    
+    // FORCE add hash to URL if missing - ensures client-side routing works
+    if (resetUrl && !resetUrl.includes("/#/")) {
+        console.log("[EMAIL_SERVICE_FIXING] URL missing hash, attempting fix...");
+        // Extract base URL (everything before /reset-password) and query string
+        const match = resetUrl.match(/^(.+?)\/reset-password(\?.*)$/);
+        console.log("[EMAIL_SERVICE_REGEX_MATCH]", match ? "MATCHED" : "NO MATCH", match);
+        if (match) {
+            const baseUrl = match[1];
+            const queryString = match[2] || "";
+            resetUrl = `${baseUrl}/#/reset-password${queryString}`;
+            console.log("[EMAIL_SERVICE] FORCED HASH FORMAT:", resetUrl);
+        }
+    } else {
+        console.log("[EMAIL_SERVICE] URL already has hash or is empty, using as-is");
+    }
+    
+    console.log("[EMAIL_SERVICE_FINAL] About to send email with URL:", resetUrl);
+    
     const subject = `${appName} password reset`;
     const resetText = resetUrl
         ? `Reset link: ${resetUrl}`
@@ -104,7 +125,7 @@ export const sendPasswordResetEmail = ({ to, name = "Customer", resetToken, rese
         "If you did not request this, you can ignore this email.",
     ].join("\n");
     const actionHtml = resetUrl
-        ? `<p><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 18px;font-weight:700;">Reset password</a></p>`
+        ? `<p><a href="${resetUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 18px;font-weight:700;">Reset password</a></p>`
         : resetToken
             ? `<div style="margin:22px 0;padding:18px;background:#f9fafb;border:1px solid #e5e7eb;text-align:center;font-size:24px;font-weight:700;letter-spacing:4px;color:#111827;">${escapeHtml(resetToken)}</div>`
             : `<p style="color:#111827;">No reset link or code is available. Please contact support.</p>`;
