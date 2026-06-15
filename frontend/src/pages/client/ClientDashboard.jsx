@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect, react-hooks/static-components */
+﻿/* eslint-disable react-hooks/set-state-in-effect, react-hooks/static-components */
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -265,139 +265,165 @@ export default function ClientDashboard() {
 
   const unreadCount = notifications.filter((notification) => notification.unread).length;
 
-  const Sidebar = ({ isMobile = false }) => (
-    <div
-      className={`${isMobile ? "w-full max-w-xs" : "w-72"} bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white ${
-        isMobile ? "min-h-screen" : "h-[100dvh]"
-      } flex flex-col overflow-hidden`}
-    >
-      <div className="p-6 border-b border-slate-700">
-          <div className="flex items-center gap-3">
-          <img
-            src={logoSrc}
-            alt="JBM Electro logo"
-            className="!h-12 !w-12 md:!h-14 md:!w-[64px] rounded-xl bg-white/10 p-1 md:p-2 object-contain border border-white/10"
-          />
-          <div>
-            <h1 className="!text-base md:!text-lg font-bold truncate">JBM Electro</h1>
-            <p className="text-sm text-slate-400">Client Portal</p>
-          </div>
-        </div>
-      </div>
+  const Sidebar = ({ isMobile = false, open, onClose }) => {
+    const [isOpen, setIsOpen] = useState(Boolean(open));
+    const isSidebarOpen = open !== undefined ? Boolean(open) : isOpen;
 
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          return (
+    const closeSidebar = () => {
+      if (onClose) {
+        onClose();
+      } else {
+        setIsOpen(false);
+      }
+    };
+
+    return (
+      <>
+        {isMobile && isSidebarOpen && (
+          <div className="fixed inset-0 z-40 md:hidden">
             <button
-              key={item.id}
+              aria-label="Close sidebar overlay"
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              onClick={closeSidebar}
               type="button"
-              onClick={() => {
-                setActiveTab(item.id);
-                if (isMobile) setMobileMenuOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
-                activeTab === item.id
-                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
-                  : "text-slate-300 hover:bg-slate-700 hover:text-white"
-              }`}
-            >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              <span className="text-sm font-medium">{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-
-        <div className="p-4 border-t border-slate-700 space-y-3">
-          <button
-            type="button"
-            onClick={() => setAccountMenuOpen((open) => !open)}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-200"
-          >
-            <User className="h-5 w-5 flex-shrink-0" />
-            <span className="text-base font-medium flex-1 text-left">Account</span>
-            <ChevronDown
-              className={`h-4 w-4 transition-transform flex-shrink-0 ${
-                accountMenuOpen ? "rotate-180" : ""
-              }`}
             />
-          </button>
+          </div>
+        )}
 
-          {accountMenuOpen && (
-            <div className="flex flex-col gap-3 overflow-hidden rounded-lg border border-slate-600 bg-slate-700/50 p-4">
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 overflow-hidden flex items-center justify-center flex-shrink-0">
-                  {user?.profileImageUrl ? (
-                    <img src={user.profileImageUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="font-semibold text-white">{user?.name?.[0]?.toUpperCase() || "C"}</span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-slate-400">Logged in as</p>
-                  <p className="text-base font-semibold text-white truncate">{user?.name || "Customer"}</p>
-                  <p className="text-sm text-slate-400 truncate">{user?.email || "customer@example.com"}</p>
-                </div>
+        <aside
+          className={`${
+            isMobile
+              ? `fixed inset-y-0 left-0 z-50 w-64 max-w-[80vw] transform transition-transform duration-300 ${
+                  isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+                }`
+              : "!w-64 h-[100dvh] flex flex-col"
+          } bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col`}
+        >
+          <div className="sticky top-0 z-50 md:relative p-6 border-b border-slate-700 bg-transparent">
+            <div className="flex items-center gap-3">
+              <img
+                src={logoSrc}
+                alt="JBM Electro logo"
+                className="!h-12 !w-12 md:!h-14 md:!w-[64px] rounded-xl bg-white/10 p-1 md:p-2 object-contain border border-white/10"
+              />
+              <div>
+                <h1 className="!text-base md:!text-lg font-bold truncate">JBM Electro</h1>
+                <p className="text-sm text-slate-400">Client Portal</p>
               </div>
-              <div className="h-px bg-slate-600" />
-              <button
-                type="button"
-                onClick={() => {
-                  setAccountMenuOpen(false);
-                  setActiveTab("settings");
-                }}
-                className="w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-slate-300 transition-all duration-200 hover:bg-slate-600"
-              >
-                <Settings className="h-5 w-5" />
-                Settings
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-red-300 transition-all duration-200 hover:bg-red-600/20"
-              >
-                <LogOut className="h-5 w-5" />
-                Logout
-              </button>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => onClose?.()}
+                className="absolute right-4 top-4 text-slate-300 hover:text-white"
+                aria-label="Close customer menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    if (isMobile) onClose?.();
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                    activeTab === item.id
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
+                      : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                  }`}
+                >
+                  <Icon className="h-5 w-5 flex-shrink-0" />
+                  <span className="text-sm font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className="p-4 border-t border-slate-700 space-y-3">
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen((open) => !open)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-700 hover:text-white transition-all duration-200"
+              aria-expanded={accountMenuOpen}
+            >
+              <User className="h-5 w-5 flex-shrink-0" />
+              <span className="text-base font-medium flex-1 text-left">Account</span>
+              <ChevronDown
+                className={`h-4 w-4 transition-transform flex-shrink-0 ${
+                  accountMenuOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {accountMenuOpen && (
+              <div className="flex flex-col gap-3 overflow-hidden rounded-lg border border-slate-600 bg-slate-700/50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 overflow-hidden flex items-center justify-center flex-shrink-0">
+                    {user?.profileImageUrl ? (
+                      <img src={user.profileImageUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="font-semibold text-white">{user?.name?.[0]?.toUpperCase() || "C"}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-slate-400">Logged in as</p>
+                    <p className="text-base font-semibold text-white truncate">{user?.name || "Customer"}</p>
+                    <p className="text-sm text-slate-400 truncate">{user?.email || "customer@example.com"}</p>
+                  </div>
+                </div>
+                <div className="h-px bg-slate-600" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    setActiveTab("settings");
+                    if (isMobile) closeSidebar();
+                  }}
+                  className="w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-slate-300 transition-all duration-200 hover:bg-slate-600"
+                >
+                  <Settings className="h-5 w-5" />
+                  Settings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleLogout();
+                    if (isMobile) closeSidebar();
+                  }}
+                  className="w-full flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm text-red-300 transition-all duration-200 hover:bg-red-600/20"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+      </>
+    );
+  };
 
   return (
     <div className="flex h-[100dvh] overflow-hidden bg-gray-50">
-      <div className="fixed inset-y-0 left-0 z-40 hidden w-64 md:block">
+      <div className="fixed inset-y-0 left-0 z-40 hidden md:block md:w-64">
         <Sidebar />
       </div>
 
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setMobileMenuOpen(false)}
-            aria-label="Close customer menu"
-          />
-          <div className="relative z-50 w-64">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(false)}
-              className="absolute right-4 top-4 text-slate-200 hover:text-white z-50"
-              aria-label="Close sidebar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <Sidebar isMobile />
-          </div>
-        </div>
+        <Sidebar isMobile open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />
       )}
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col md:ml-72">
-        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6 md:-ml-72">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col md:ml-64">
+        <div className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3 shadow-sm sm:px-6 md:pl-0">
           <Button
             variant="outline"
             size="icon"
@@ -507,7 +533,7 @@ export default function ClientDashboard() {
           </div>
         </div>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-5 md:p-6 lg:p-8 xl:p-10 md:pl-0 md:pr-6">
           {activeTab === "home" && <ClientHome onNavigateTab={setActiveTab} />}
           {activeTab === "products" && <ClientProducts />}
           {activeTab === "packages" && (
@@ -523,3 +549,4 @@ export default function ClientDashboard() {
   );
 
 }
+

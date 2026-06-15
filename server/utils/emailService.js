@@ -87,26 +87,16 @@ export const sendOtpVerificationEmail = ({ to, name = "Customer", otp, expiresIn
 };
 
 export const sendPasswordResetEmail = ({ to, name = "Customer", resetToken, resetUrl, expiresInMinutes = 30 }) => {
-    console.log("[EMAIL_SERVICE_START] Received resetUrl:", resetUrl);
-    console.log("[EMAIL_SERVICE_START] Has hash?", resetUrl?.includes("/#/"));
-    
     // FORCE add hash to URL if missing - ensures client-side routing works
     if (resetUrl && !resetUrl.includes("/#/")) {
-        console.log("[EMAIL_SERVICE_FIXING] URL missing hash, attempting fix...");
         // Extract base URL (everything before /reset-password) and query string
         const match = resetUrl.match(/^(.+?)\/reset-password(\?.*)$/);
-        console.log("[EMAIL_SERVICE_REGEX_MATCH]", match ? "MATCHED" : "NO MATCH", match);
         if (match) {
             const baseUrl = match[1];
             const queryString = match[2] || "";
             resetUrl = `${baseUrl}/#/reset-password${queryString}`;
-            console.log("[EMAIL_SERVICE] FORCED HASH FORMAT:", resetUrl);
         }
-    } else {
-        console.log("[EMAIL_SERVICE] URL already has hash or is empty, using as-is");
     }
-    
-    console.log("[EMAIL_SERVICE_FINAL] About to send email with URL:", resetUrl);
     
     const subject = `${appName} password reset`;
     const resetText = resetUrl

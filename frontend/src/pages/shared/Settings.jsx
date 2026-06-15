@@ -478,14 +478,15 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 sm:p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50">
+      <div className="space-y-4 pb-16 mx-auto max-w-7xl">
         <div>
           <h1 className="text-2xl md:text-3xl font-semibold">Settings</h1>
           <p className="text-gray-500">View and manage your account profile</p>
         </div>
 
-        <div className="grid lg:grid-cols-[260px_1fr] gap-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid lg:grid-cols-[260px_1fr] gap-6 mt-4">
           <Card className="rounded-3xl border border-slate-200 bg-slate-50 shadow-sm overflow-hidden">
             <CardContent className="p-6 space-y-4">
               <button
@@ -906,6 +907,7 @@ export default function Settings() {
               </CardContent>
             </Card>
           )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   AlertCircle,
@@ -49,6 +50,7 @@ const getPackageItemStock = (item) => Number(getPackageProduct(item)?.stockLevel
 export default function ClientOrderForm({ selectedPackage, onCancelPackage }) {
   const { user } = useAuth();
   const { cart, clearCart, updateQuantity, removeFromCart } = useCart();
+  const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState(() => cart.map((item) => item._id));
   const [name, setName] = useState(user?.name || "");
   const [address, setAddress] = useState(user?.address || "");
@@ -199,14 +201,12 @@ export default function ClientOrderForm({ selectedPackage, onCancelPackage }) {
         notes: specialInstructions,
       });
 
+      // Don't redirect to external checkout; place order, clear cart, show success, then navigate home
       const checkoutUrl = response.data?.data?.payment?.checkoutUrl;
-      if (checkoutUrl) {
-        window.location.assign(checkoutUrl);
-        return;
-      }
-
       toast.success("Order placed successfully. You will receive a confirmation shortly.");
       resetForm();
+      // Navigate to client dashboard/home
+      navigate("/dashboard");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to place order");
     } finally {

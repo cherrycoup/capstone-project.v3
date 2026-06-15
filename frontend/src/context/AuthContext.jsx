@@ -23,18 +23,15 @@ export const AuthProvider = ({ children }) => {
             const token = localStorage.getItem("pos-token");
 
             if (!token) {
-                console.debug("[Auth] No token found in localStorage");
                 setLoading(false);
                 return;
             }
 
             try {
-                console.debug("[Auth] Verifying session with token");
                 const response = await authAPI.getSession();
                 if (!mounted) return;
 
                 const sessionUser = response.data.user;
-                console.debug("[Auth] Session verified successfully for:", sessionUser.email);
                 setUser(sessionUser);
                 localStorage.setItem("pos-user", JSON.stringify(sessionUser));
             } catch (error) {
