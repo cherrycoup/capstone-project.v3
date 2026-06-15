@@ -9,6 +9,7 @@ const PRODUCTION_API_BASE_URL = "https://project-capstone-4.onrender.com/api";
 const API_BASE_URL =
     import.meta.env.VITE_API_BASE_URL ||
     (import.meta.env.PROD ? PRODUCTION_API_BASE_URL : LOCAL_API_BASE_URL);
+const normalizedApiBaseUrl = API_BASE_URL.replace(/\/+$/, "");
 const GET_CACHE_TTL_MS = 30_000;
 const getCache = new Map();
 
@@ -52,7 +53,7 @@ const clearApiCache = () => {
 
 // Create axios instance with default config
 const api = axios.create({
-    baseURL: API_BASE_URL,
+    baseURL: normalizedApiBaseUrl,
     headers: {
         "Content-Type": "application/json"
     }
